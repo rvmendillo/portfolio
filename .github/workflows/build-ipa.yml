@@ -1,0 +1,52 @@
+name: Build iPhone IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "ios/**"
+      - ".github/workflows/build-ipa.yml"
+
+jobs:
+  build:
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build unsigned iPhone application
+        run: |
+          xcodebuild \
+            -project ReyPortfolioOS.xcodeproj \
+            -scheme ReyPortfolioOS \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            clean build
+
+      - name: Package IPA for Feather
+        run: |
+          mkdir Payload
+          cp -R build/Build/Products/Release-iphoneos/ReyPortfolioOS.app Payload/
+          ditto -c -k --sequesterRsrc --keepParent Payload ReyPortfolioOS-unsigned.ipa
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ReyPortfolioOS-unsigned-ipa
+          path: ios/ReyPortfolioOS-unsigned.ipa
+          if-no-files-found: error
+
