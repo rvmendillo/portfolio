@@ -7,6 +7,9 @@ on:
       - '.github/workflows/build-mindharbor-ipa.yml'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-15
@@ -25,7 +28,7 @@ jobs:
       - name: Build unsigned iPhone app
         run: |
           cd "$RUNNER_TEMP/mindharbor/MindHarbor"
-          xcodebuild             -project MindHarbor.xcodeproj             -target MindHarbor             -configuration Release             -sdk iphoneos             -derivedDataPath "$RUNNER_TEMP/MindHarborDerivedData"             CODE_SIGNING_ALLOWED=NO             CODE_SIGNING_REQUIRED=NO             CODE_SIGN_IDENTITY=""             build
+          xcodebuild -project MindHarbor.xcodeproj -target MindHarbor -configuration Release -sdk iphoneos -derivedDataPath "$RUNNER_TEMP/MindHarborDerivedData" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
 
       - name: Package IPA
         run: |
@@ -38,10 +41,32 @@ jobs:
           /usr/bin/zip -qry MindHarbor-unsigned.ipa Payload
           ls -lh MindHarbor-unsigned.ipa
 
-      - name: Upload IPA
+      - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
           name: MindHarbor-unsigned-IPA
           path: ${{ runner.temp }}/MindHarbor-unsigned.ipa
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish IPA to repository
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          mkdir -p builds
+          cp "$RUNNER_TEMP/MindHarbor-unsigned.ipa" builds/MindHarbor-unsigned.ipa
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add builds/MindHarbor-unsigned.ipa
+          if git diff --cached --quiet; then
+            echo "IPA is unchanged."
+            exit 0
+          fi
+          git commit -m "Build MindHarbor unsigned IPA [skip ci]"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
