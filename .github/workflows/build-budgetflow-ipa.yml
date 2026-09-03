@@ -23,7 +23,7 @@ jobs:
         shell: bash
         run: |
           cat budgetflow-build/source.b64.part00 budgetflow-build/source.b64.part01 budgetflow-build/source.b64.part02 budgetflow-build/source.b64.part03 > /tmp/BudgetFlow.b64
-          base64 --decode /tmp/BudgetFlow.b64 > /tmp/BudgetFlow-native-ios.zip
+          /usr/bin/base64 -D -i /tmp/BudgetFlow.b64 -o /tmp/BudgetFlow-native-ios.zip
           mkdir -p /tmp/budgetflow-src
           unzip -q /tmp/BudgetFlow-native-ios.zip -d /tmp/budgetflow-src
           test -f /tmp/budgetflow-src/BudgetFlow/BudgetFlow.xcodeproj/project.pbxproj
