@@ -11,7 +11,9 @@ struct NativeDesignerView: View {
     @State private var connectMode = false
     @State private var showCode = false
     @State private var showPreview = false
+    @State private var codeTarget = "YAML"
     @State private var dragOrigins: [UUID: CGPoint] = [:]
+    private let codeTargets = ["YAML", "Tkinter", "PyQt", "Kivy", "Java Swing"]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -38,7 +40,35 @@ struct NativeDesignerView: View {
             .frame(minHeight: 245)
             inspector
         }
-        .sheet(isPresented: $showCode) { NavigationStack { ScrollView([.horizontal, .vertical]) { Text(yaml).font(.system(.caption, design: .monospaced)).frame(maxWidth: .infinity, alignment: .leading).padding() }.navigationTitle("Generated GUI YAML").toolbar { ToolbarItem(placement: .navigationBarTrailing) { ShareLink(item: yaml) { Image(systemName: "square.and.arrow.up") } } } } }
+        .sheet(isPresented: $showCode) {
+            NavigationStack {
+                VStack(spacing: 0) {
+                    HStack {
+                        Text("Output").font(.caption.bold())
+                        Spacer()
+                        Picker("Output", selection: $codeTarget) {
+                            ForEach(codeTargets, id: \.self) { Text($0) }
+                        }
+                        .pickerStyle(.menu)
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 10)
+
+                    ScrollView([.horizontal, .vertical]) {
+                        Text(generatedCode)
+                            .font(.system(.caption, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding()
+                    }
+                }
+                .navigationTitle("Generated GUI Code")
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        ShareLink(item: generatedCode) { Image(systemName: "square.and.arrow.up") }
+                    }
+                }
+            }
+        }
         .sheet(isPresented: $showPreview) { NativePackagePreviewView(package: NativePackage(name: projectName, nodes: nodes, connections: connections)).environmentObject(theme).presentationDetents([.large]) }
         .onAppear(perform: loadDraft)
     }
@@ -92,6 +122,11 @@ struct NativeDesignerView: View {
         connections = [DesignerConnection(from: first.id, to: button.id), DesignerConnection(from: second.id, to: button.id), DesignerConnection(from: button.id, to: output.id)]
         selectedID = button.id; saveDraft()
     }
+    private var generatedCode: String {
+        if codeTarget == "YAML" { return yaml }
+        return NativeTranspiler.compile(source: yaml, input: "GUI YAML", target: codeTarget, customPrint: "show")
+    }
+
     private var yaml: String {
         var lines = ["app: \"\(projectName.prefix(48))\"", "components:"]
         for node in nodes { lines += ["  - id: \(node.name)", "    type: \(node.kind.rawValue)", "    text: \"\(node.text.replacingOccurrences(of: "\"", with: "'"))\"", "    x: \(Int(node.x))", "    y: \(Int(node.y))"]; if node.kind == .button { lines.append("    operation: \(node.operation.rawValue)"); if !node.formula.isEmpty { lines.append("    formula: \"\(node.formula)\"") } } }
