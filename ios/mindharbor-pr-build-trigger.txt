@@ -1,0 +1,1 @@
+Trigger MindHarbor IPA build diagnostics.
