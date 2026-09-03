@@ -1,0 +1,82 @@
+name: IPA Builder Service
+run-name: IPA Builder ${{ inputs.job_id }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      job_id:
+        description: Unique build job ID
+        required: true
+        type: string
+      job_path:
+        description: Project JSON path on ipa-builder-jobs branch
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - name: Checkout build service
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Read project from isolated jobs branch
+        env:
+          JOB_PATH: ${{ inputs.job_path }}
+        run: |
+          git fetch origin ipa-builder-jobs
+          git show "origin/ipa-builder-jobs:${JOB_PATH}" > /tmp/project.json
+          python3 -m json.tool /tmp/project.json >/dev/null
+
+      - name: Generate safe native SwiftUI target
+        run: |
+          mkdir -p /tmp/ipa-builder-generated
+          python3 ipa-builder-service/generate.py \
+            /tmp/project.json \
+            /tmp/ipa-builder-generated/App.swift \
+            /tmp/ipa-builder-generated/project.yml
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: /tmp/ipa-builder-generated
+        run: xcodegen generate
+
+      - name: Build unsigned iPhone application
+        working-directory: /tmp/ipa-builder-generated
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project GeneratedApp.xcodeproj \
+            -scheme GeneratedApp \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            clean build | tee xcodebuild.log
+
+      - name: Package IPA
+        working-directory: /tmp/ipa-builder-generated
+        run: |
+          mkdir Payload
+          cp -R build/Build/Products/Release-iphoneos/GeneratedApp.app Payload/
+          ditto -c -k --sequesterRsrc --keepParent Payload "Generated-${{ inputs.job_id }}.ipa"
+          unzip -t "Generated-${{ inputs.job_id }}.ipa"
+          test -f Payload/GeneratedApp.app/GeneratedApp
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ipa-${{ inputs.job_id }}
+          path: /tmp/ipa-builder-generated/Generated-${{ inputs.job_id }}.ipa
+          if-no-files-found: error
+          retention-days: 7
