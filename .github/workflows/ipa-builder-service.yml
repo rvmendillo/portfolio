@@ -1,7 +1,11 @@
 name: IPA Builder Service
-run-name: IPA Builder ${{ inputs.job_id }}
+run-name: IPA Builder ${{ inputs.job_id || github.sha }}
 
 on:
+  push:
+    branches: [ipa-builder-jobs]
+    paths:
+      - "ipa-builder-jobs/**/project.json"
   workflow_dispatch:
     inputs:
       job_id:
@@ -24,20 +28,40 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: main
+          path: service
           fetch-depth: 0
+
+      - name: Resolve build job
+        id: job
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_JOB_ID: ${{ inputs.job_id }}
+          INPUT_JOB_PATH: ${{ inputs.job_path }}
+        run: |
+          git -C service fetch origin ipa-builder-jobs
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            JOB_ID="$INPUT_JOB_ID"
+            JOB_PATH="$INPUT_JOB_PATH"
+          else
+            JOB_PATH="$(git -C service diff-tree --no-commit-id --name-only -r "$GITHUB_SHA" | grep '^ipa-builder-jobs/.*/project.json$' | tail -1)"
+            JOB_ID="$(basename "$(dirname "$JOB_PATH")")"
+          fi
+          test -n "$JOB_ID"
+          test -n "$JOB_PATH"
+          echo "job_id=$JOB_ID" >> "$GITHUB_OUTPUT"
+          echo "job_path=$JOB_PATH" >> "$GITHUB_OUTPUT"
 
       - name: Read project from isolated jobs branch
         env:
-          JOB_PATH: ${{ inputs.job_path }}
+          JOB_PATH: ${{ steps.job.outputs.job_path }}
         run: |
-          git fetch origin ipa-builder-jobs
-          git show "origin/ipa-builder-jobs:${JOB_PATH}" > /tmp/project.json
+          git -C service show "origin/ipa-builder-jobs:${JOB_PATH}" > /tmp/project.json
           python3 -m json.tool /tmp/project.json >/dev/null
 
       - name: Generate safe native SwiftUI target
         run: |
           mkdir -p /tmp/ipa-builder-generated
-          python3 ipa-builder-service/generate.py \
+          python3 service/ipa-builder-service/generate.py \
             /tmp/project.json \
             /tmp/ipa-builder-generated/App.swift \
             /tmp/ipa-builder-generated/project.yml
@@ -66,17 +90,19 @@ jobs:
 
       - name: Package IPA
         working-directory: /tmp/ipa-builder-generated
+        env:
+          JOB_ID: ${{ steps.job.outputs.job_id }}
         run: |
           mkdir Payload
           cp -R build/Build/Products/Release-iphoneos/GeneratedApp.app Payload/
-          ditto -c -k --sequesterRsrc --keepParent Payload "Generated-${{ inputs.job_id }}.ipa"
-          unzip -t "Generated-${{ inputs.job_id }}.ipa"
+          ditto -c -k --sequesterRsrc --keepParent Payload "Generated-${JOB_ID}.ipa"
+          unzip -t "Generated-${JOB_ID}.ipa"
           test -f Payload/GeneratedApp.app/GeneratedApp
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ipa-${{ inputs.job_id }}
-          path: /tmp/ipa-builder-generated/Generated-${{ inputs.job_id }}.ipa
+          name: ipa-${{ steps.job.outputs.job_id }}
+          path: /tmp/ipa-builder-generated/Generated-${{ steps.job.outputs.job_id }}.ipa
           if-no-files-found: error
           retention-days: 7
