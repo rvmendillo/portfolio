@@ -2,100 +2,119 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#07111f">
-  <meta name="description" content="Rey Victor Mendillo — AI Software Engineer at CHAMP Cargosystems.">
-  <title>Rey Victor Mendillo — AI Software Engineer</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#071326">
+  <meta name="description" content="Rey Victor Mendillo's interactive Portfolio OS — software engineering, AI, projects, terminal, IDE, GUI designer, and transpiler.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'self'; object-src 'self'; worker-src 'self'; manifest-src 'self'; base-uri 'self'; form-action 'self'">
+  <title>Rey Portfolio OS</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
-  <div class="progress" aria-hidden="true"><i></i></div>
-  <header class="nav-shell">
-    <a class="brand" href="#home" aria-label="Rey Victor Mendillo home"><span>RV</span><b>rvmendillo</b></a>
-    <nav aria-label="Portfolio sections">
-      <a href="#home">Home</a><a href="#experience">Experience</a><a href="#projects">Projects</a><a href="#skills">Skills</a><a href="#contact">Contact</a>
+<body data-theme="windows" data-motion="on">
+  <noscript><div class="noscript">Portfolio OS needs JavaScript enabled.</div></noscript>
+  <section class="boot-screen" id="bootScreen" aria-label="Starting Portfolio OS">
+    <div class="boot-aurora" aria-hidden="true"></div>
+    <div class="boot-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <p class="boot-name">REY PORTFOLIO OS</p>
+    <div class="boot-loader" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+    <button class="boot-skip" id="bootSkip" type="button">Enter desktop</button>
+  </section>
+  <main class="desktop" id="desktop" aria-label="Rey Portfolio OS desktop">
+    <div class="wallpaper" aria-hidden="true"><div class="aurora aurora-one"></div><div class="aurora aurora-two"></div><div class="aurora aurora-three"></div><div class="wallpaper-grid"></div></div>
+    <header class="desktop-status"><div><span class="status-dot"></span><strong>Rey Portfolio OS</strong><span class="status-copy">Local workspace</span></div><div class="status-actions"><button type="button" data-open="agent">Local AI</button><button type="button" id="installPwaTop">Install</button></div></header>
+    <section class="desktop-icons" aria-label="Desktop applications">
+      <button class="desktop-icon" type="button" data-open="about"><span class="app-icon profile-icon">RV</span><b>About Rey</b></button>
+      <button class="desktop-icon" type="button" data-open="resume"><span class="app-icon resume-icon">▤</span><b>Resume.pdf</b></button>
+      <button class="desktop-icon" type="button" data-open="projects"><span class="app-icon projects-icon">◇</span><b>Projects</b></button>
+      <button class="desktop-icon" type="button" data-open="files"><span class="app-icon folder-icon">▰</span><b>File Explorer</b></button>
+      <button class="desktop-icon" type="button" data-open="browser"><span class="app-icon browser-icon">◎</span><b>Browser</b></button>
+      <button class="desktop-icon" type="button" data-open="terminal"><span class="app-icon terminal-icon">›_</span><b>Terminal</b></button>
+      <button class="desktop-icon" type="button" data-open="ide"><span class="app-icon ide-icon">IJ</span><b>Rey IDE</b></button>
+      <button class="desktop-icon" type="button" data-open="designer"><span class="app-icon designer-icon">⌘</span><b>GUI Designer</b></button>
+      <button class="desktop-icon" type="button" data-open="transpiler"><span class="app-icon transpiler-icon">{ }</span><b>Transpiler.exe</b></button>
+      <button class="desktop-icon" type="button" data-open="agent"><span class="app-icon agent-icon">✦</span><b>Local AI</b></button>
+      <button class="desktop-icon" type="button" data-open="store"><span class="app-icon store-icon">⊞</span><b>App Studio</b></button>
+      <button class="desktop-icon" type="button" data-open="settings"><span class="app-icon settings-icon">⚙</span><b>Settings</b></button>
+    </section>
+    <section class="window-layer" id="windowLayer" aria-label="Open application windows"></section>
+    <aside class="start-menu panel-pop" id="startMenu" aria-hidden="true">
+      <label class="start-search"><span>⌕</span><input id="startSearch" type="search" maxlength="80" placeholder="Search apps, projects, commands" autocomplete="off"></label>
+      <div class="start-heading"><strong>Pinned</strong><button type="button" data-open="files">All apps ›</button></div>
+      <div class="start-apps" id="startApps">
+        <button type="button" data-open="about" data-name="about rey profile"><span class="app-icon profile-icon">RV</span><b>About</b></button>
+        <button type="button" data-open="resume" data-name="resume pdf"><span class="app-icon resume-icon">▤</span><b>Resume</b></button>
+        <button type="button" data-open="projects" data-name="projects work"><span class="app-icon projects-icon">◇</span><b>Projects</b></button>
+        <button type="button" data-open="terminal" data-name="terminal python java c++"><span class="app-icon terminal-icon">›_</span><b>Terminal</b></button>
+        <button type="button" data-open="ide" data-name="ide code editor intellij"><span class="app-icon ide-icon">IJ</span><b>Rey IDE</b></button>
+        <button type="button" data-open="designer" data-name="gui designer drag code"><span class="app-icon designer-icon">⌘</span><b>Designer</b></button>
+        <button type="button" data-open="transpiler" data-name="transpiler python java cpp human code"><span class="app-icon transpiler-icon">{ }</span><b>Transpiler</b></button>
+        <button type="button" data-open="agent" data-name="local ai offline agent"><span class="app-icon agent-icon">✦</span><b>Local AI</b></button>
+        <button type="button" data-open="browser" data-name="browser web portfolio"><span class="app-icon browser-icon">◎</span><b>Browser</b></button>
+        <button type="button" data-open="settings" data-name="settings themes"><span class="app-icon settings-icon">⚙</span><b>Settings</b></button>
+        <button type="button" data-open="calculator" data-name="calculator math"><span class="app-icon calculator-icon">±</span><b>Calculator</b></button>
+        <button type="button" data-open="store" data-name="app studio install package"><span class="app-icon store-icon">⊞</span><b>App Studio</b></button>
+      </div>
+      <div class="start-recommended"><strong>Recommended</strong><button type="button" data-open="designer"><span>⌘</span><span><b>GUI binding workspace</b><small>Connect inputs, actions, and outputs</small></span></button><button type="button" data-open="projects"><span>◇</span><span><b>Skyler</b><small>ONE Record trust engine</small></span></button></div>
+      <footer><button type="button" data-open="about"><span class="avatar">RV</span><span><b>Rey Victor Mendillo</b><small>Software Engineer</small></span></button><button type="button" id="lockButton" aria-label="Lock Portfolio OS">⏻</button></footer>
+    </aside>
+    <aside class="quick-panel panel-pop" id="quickPanel" aria-hidden="true"><div class="quick-grid"><button type="button" class="active">◉<span>Wi-Fi</span></button><button type="button" class="active">⌁<span>Bluetooth</span></button><button type="button" id="focusToggle">☾<span>Focus</span></button><button type="button" data-open="settings">⚙<span>Settings</span></button></div><label>Brightness<input id="brightnessRange" type="range" min="55" max="115" value="100"></label><label>Volume<input type="range" min="0" max="100" value="64"></label></aside>
+    <menu class="context-menu" id="contextMenu"><button type="button" id="refreshDesktop">↻ Refresh</button><button type="button" data-open="designer">＋ New GUI project</button><button type="button" data-open="settings">▣ Personalize</button></menu>
+    <nav class="taskbar" aria-label="Taskbar">
+      <button class="task-start" id="startButton" type="button" aria-label="Open Start menu"><span class="windows-mark"><i></i><i></i><i></i><i></i></span></button>
+      <button class="task-search" id="taskSearch" type="button"><span>⌕</span><span>Search</span></button>
+      <div class="task-pinned"><button type="button" data-open="files" aria-label="File Explorer"><span class="app-icon folder-icon">▰</span></button><button type="button" data-open="browser" aria-label="Browser"><span class="app-icon browser-icon">◎</span></button><button type="button" data-open="terminal" aria-label="Terminal"><span class="app-icon terminal-icon">›_</span></button><button type="button" data-open="ide" aria-label="Rey IDE"><span class="app-icon ide-icon">IJ</span></button><button type="button" data-open="designer" aria-label="GUI Designer"><span class="app-icon designer-icon">⌘</span></button></div>
+      <div class="running-apps" id="runningApps"></div>
+      <button class="system-tray" id="trayButton" type="button" aria-label="Quick settings"><span>⌃</span><span>◔⌁</span><span class="clock"><b id="clockTime">12:00</b><small id="clockDate">09/03/2026</small></span></button>
     </nav>
-    <button class="menu" type="button" aria-label="Toggle navigation" aria-expanded="false">☰</button>
-  </header>
-
-  <main>
-    <section class="scene hero" id="home" data-scene="01">
-      <div class="orb orb-a" data-depth=".12"></div><div class="orb orb-b" data-depth=".25"></div>
-      <div class="grid" data-depth=".08"></div>
-      <div class="scene-content hero-copy" data-depth="-.05">
-        <p class="eyebrow"><span></span> AI SOFTWARE ENGINEER · PHILIPPINES</p>
-        <h1>Engineering systems.<br><em>Exploring intelligence.</em></h1>
-        <p class="lede">I’m Rey Victor Mendillo—an AI Software Engineer at CHAMP Cargosystems and Mapúa University graduate, building enterprise software, thoughtful interfaces, and intelligent products.</p>
-        <div class="actions"><a class="primary" href="#projects">Explore projects →</a><a class="secondary" href="https://ph.linkedin.com/in/rvmendillo" target="_blank" rel="noreferrer">LinkedIn</a><a class="secondary" href="mailto:rvmendillo@gmail.com">Email me</a></div>
-        <ul class="stack" aria-label="Core technology stack"><li>Java</li><li>Spring</li><li>Angular</li><li>Python</li><li>AI / ML</li><li>Oracle</li></ul>
-      </div>
-      <aside class="terminal-card" data-depth=".16" aria-label="Developer terminal summary">
-        <header><i></i><i></i><i></i><span>rey@portfolio:~</span></header>
-        <pre><b>$ whoami</b>
-Rey Victor Mendillo
-
-<b>$ current-role</b>
-AI Software Engineer @ CHAMP
-
-<b>$ focus --now</b>
-enterprise · ai/ml · ux
-
-<b>$ status</b>
-<span>● available to build</span></pre>
-      </aside>
-      <a class="scroll-cue" href="#experience">Scroll to continue <span>↓</span></a>
-    </section>
-
-    <section class="scene experience" id="experience" data-scene="02">
-      <div class="stripe" data-depth=".18"></div>
-      <div class="scene-content split">
-        <div class="section-title" data-depth="-.04"><p class="eyebrow"><span></span> EXPERIENCE</p><h2>Shipping software<br>that moves cargo.</h2><p>Progressing through engineering roles at CHAMP Cargosystems while working across enterprise UI, APIs, authentication, search, caching, and data workflows.</p></div>
-        <div class="timeline" data-depth=".08">
-          <article class="active"><time>SEP 2025 — NOW</time><h3>Software Engineer</h3><p>CHAMP Cargosystems</p><small>Enterprise features · system ownership · delivery</small></article>
-          <article><time>SEP 2024 — SEP 2025</time><h3>Junior Software Engineer</h3><p>CHAMP Cargosystems</p><small>Angular · Spring · OAuth · reusable components</small></article>
-          <article><time>MAR 2023 — SEP 2024</time><h3>Junior Software Engineer I</h3><p>CHAMP Cargosystems</p><small>Search behavior · caching · API integration</small></article>
-          <article><time>JUN — AUG 2021</time><h3>Associate Back-End Developer</h3><p>Chimes Consulting</p><small>Backend services · databases · team delivery</small></article>
-        </div>
-      </div>
-    </section>
-
-    <section class="scene projects" id="projects" data-scene="03">
-      <div class="orb orb-c" data-depth=".2"></div>
-      <div class="scene-content">
-        <div class="section-head"><div><p class="eyebrow"><span></span> SELECTED PROJECTS</p><h2>Applied intelligence.</h2></div><p>Digital cargo, computer vision, predictive analytics, and natural-language systems.</p></div>
-        <div class="project-grid">
-          <article data-depth=".03"><b>01</b><span>Digital Cargo</span><h3>Skyler</h3><p>A ONE Record trust engine harmonizing dangerous-goods compliance and shipment-level JSON-LD for real-time ground-handler checks.</p><footer>ONE Record · DG · JSON-LD</footer></article>
-          <article data-depth=".07"><b>02</b><span>Computer Vision</span><h3>Gesture Cursor Translation</h3><p>Cursor movement translation through gesture detection using deep learning.</p><footer>Deep Learning · CV</footer></article>
-          <article data-depth=".11"><b>03</b><span>Predictive Analytics</span><h3>Rotational Churn Prediction</h3><p>Automated ML and cosine similarity applied to rotational churn.</p><footer>PyCaret · Modeling</footer></article>
-          <article data-depth=".15"><b>04</b><span>Natural Language</span><h3>Text Summarization</h3><p>Extractive and abstractive summarization using PageRank and similarity.</p><footer>NLP · PageRank</footer></article>
-        </div>
-      </div>
-    </section>
-
-    <section class="scene skills" id="skills" data-scene="04">
-      <div class="code-rain" data-depth=".14" aria-hidden="true">01 101 001 111 010 100<br>const systems = ideas.map(build);<br>model.fit(data); deploy(software);</div>
-      <div class="scene-content split">
-        <div class="section-title"><p class="eyebrow"><span></span> CAPABILITIES</p><h2>Full-stack depth.<br>AI curiosity.</h2><p>Balanced across production engineering and machine-learning experimentation.</p><div class="achievement">A1R Cargo Rangers · 2026 IATA ONE Record Hackathon</div></div>
-        <div class="skill-panels" data-depth=".06">
-          <article><header><span>01</span><h3>Enterprise engineering</h3></header><p>Java · Spring · REST APIs · OAuth · Oracle · caching · search</p></article>
-          <article><header><span>02</span><h3>Interface systems</h3></header><p>Angular · TypeScript · reusable components · interaction design</p></article>
-          <article><header><span>03</span><h3>AI & data</h3></header><p>Python · scikit-learn · NLP · computer vision · analytics</p></article>
-          <article><header><span>04</span><h3>Education</h3></header><p>BS Computer Science — AI, Mapúa University · GWA 1.2 · President’s List</p></article>
-        </div>
-      </div>
-    </section>
-
-    <section class="scene contact" id="contact" data-scene="05">
-      <div class="orb orb-d" data-depth=".2"></div><div class="grid" data-depth=".05"></div>
-      <div class="scene-content contact-card" data-depth="-.04">
-        <p class="eyebrow"><span></span> LET’S CONNECT</p>
-        <h2>Have a system to build<br>or an idea to test?</h2>
-        <p>I’m interested in software engineering, intelligent products, and collaborations where thoughtful architecture meets useful design.</p>
-        <div class="actions"><a class="primary" href="mailto:rvmendillo@gmail.com">rvmendillo@gmail.com →</a><a class="secondary" href="https://ph.linkedin.com/in/rvmendillo" target="_blank" rel="noreferrer">LinkedIn</a><a class="secondary" href="https://github.com/rvmendillo" target="_blank" rel="noreferrer">GitHub profile</a></div>
-        <footer><span>Rey Victor Mendillo</span><span>AI Software Engineer · CHAMP Cargosystems</span><span>© <i id="year"></i></span></footer>
-      </div>
-    </section>
   </main>
+  <div class="lock-screen" id="lockScreen" aria-hidden="true"><div class="lock-time" id="lockTime">12:00</div><div class="lock-date" id="lockDate">Thursday, September 3</div><button type="button" id="unlockButton">Click or tap to sign in</button></div>
+  <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
+  <input class="sr-only" id="appFileInput" type="file" accept=".posapp,.json,.yml,.yaml,.exe,application/json,text/yaml">
+  <template id="windowShell"><article class="app-window" role="dialog" aria-modal="false"><header class="titlebar"><div class="window-title"><span class="app-icon"></span><strong></strong><small></small></div><div class="window-controls"><button type="button" data-action="minimize" aria-label="Minimize">—</button><button type="button" data-action="maximize" aria-label="Maximize">□</button><button type="button" data-action="close" aria-label="Close">×</button></div></header><div class="window-body"></div><i class="resize-handle" aria-hidden="true"></i></article></template>
+  <template id="app-about"><div class="about-app app-scroll"><section class="profile-hero"><div class="profile-avatar">RV<span></span></div><div><p class="kicker">SOFTWARE ENGINEER · AI BUILDER</p><h1>Rey Victor Mendillo</h1><p>Building enterprise cargo systems, intelligent tools, and interfaces where rigorous engineering meets human-centered design.</p><div class="profile-actions"><a href="mailto:rvmendillo@gmail.com">Email</a><a href="https://ph.linkedin.com/in/rvmendillo" target="_blank" rel="noopener noreferrer">LinkedIn</a><a href="https://github.com/rvmendillo" target="_blank" rel="noopener noreferrer">GitHub</a></div></div></section><section class="stat-row"><article><b>3+ years</b><span>Software engineering</span></article><article><b>AI + enterprise</b><span>Primary focus</span></article><article><b>Mapúa</b><span>BS Computer Science — AI</span></article></section><section class="about-grid"><article><p class="kicker">CURRENT</p><h2>Software Engineer at CHAMP Cargosystems</h2><p>Working across Angular, Java, Spring, APIs, OAuth, search, caching, Oracle, and reusable product systems for air cargo.</p></article><article><p class="kicker">APPROACH</p><h2>Systems first. Curiosity always.</h2><p>Software architecture, mathematics, design, music, and intelligent systems become one connected creative practice.</p></article></section><section class="timeline-card"><p class="kicker">EXPERIENCE</p><div><time>2025 — present</time><b>Software Engineer</b><span>CHAMP Cargosystems</span></div><div><time>2023 — 2025</time><b>Junior Software Engineer</b><span>CHAMP Cargosystems</span></div><div><time>2021</time><b>Associate Back-End Developer</b><span>Chimes Consulting</span></div></section></div></template>
+  <template id="app-resume"><div class="resume-app"><div class="app-toolbar"><a class="toolbar-primary" href="assets/rey-victor-mendillo-resume.pdf" download>⇩ Download PDF</a><a href="assets/rey-victor-mendillo-resume.pdf" target="_blank" rel="noopener">Open in browser</a><span>Rey Victor Mendillo · Resume</span></div><iframe class="pdf-frame" title="Rey Victor Mendillo resume PDF" src="assets/rey-victor-mendillo-resume.pdf#view=FitH&toolbar=1"></iframe></div></template>
+  <template id="app-projects"><div class="projects-app app-scroll"><header class="app-page-heading"><div><p class="kicker">SELECTED WORK</p><h1>Applied intelligence</h1></div><p>Projects connecting enterprise systems, AI, logistics, and useful interfaces.</p></header><div class="project-cards"><article><div class="project-no">01</div><p class="kicker">DIGITAL CARGO</p><h2>Skyler</h2><p>A ONE Record trust engine harmonizing dangerous-goods compliance and shipment-level JSON-LD for ground-handler checks.</p><div class="chips"><span>ONE Record</span><span>JSON-LD</span><span>DG</span></div></article><article><div class="project-no">02</div><p class="kicker">COMPUTER VISION</p><h2>Gesture Cursor</h2><p>Cursor movement translation through real-time gesture detection and deep-learning landmarks.</p><div class="chips"><span>Python</span><span>CV</span><span>Deep Learning</span></div></article><article><div class="project-no">03</div><p class="kicker">PREDICTIVE ANALYTICS</p><h2>Rotational Churn</h2><p>Automated modeling and cosine similarity used to understand and predict rotational churn.</p><div class="chips"><span>PyCaret</span><span>ML</span><span>Analytics</span></div></article><article><div class="project-no">04</div><p class="kicker">NATURAL LANGUAGE</p><h2>Text Summarization</h2><p>Extractive and abstractive summarization using similarity graphs and PageRank.</p><div class="chips"><span>NLP</span><span>PageRank</span><span>Python</span></div></article></div></div></template>
+  <template id="app-files"><div class="files-app"><aside class="files-sidebar"><strong>File Explorer</strong><button class="active" type="button" data-file-route="home">⌂ Home</button><button type="button" data-file-route="documents">▤ Documents</button><button type="button" data-file-route="projects">◇ Projects</button><button type="button" data-file-route="developer">{ } Developer</button><button type="button" data-file-route="thispc">▣ This PC</button><hr><small>LOCAL</small><button type="button" data-file-route="drive">▱ Portfolio (C:)</button></aside><section class="files-main"><div class="files-bar"><button type="button" data-file-back>‹</button><button type="button" data-file-forward>›</button><div>⌂ › <span data-file-path>Home</span></div><label>⌕<input type="search" maxlength="60" placeholder="Search files" data-file-search></label></div><div class="files-content" data-files-content></div></section></div></template>
+  <template id="app-browser"><div class="browser-app"><div class="browser-tabs"><div><span>◎</span><b>Rey Browser</b><button type="button">×</button></div><button type="button">＋</button></div><div class="browser-toolbar"><button type="button" data-browser-back>←</button><button type="button" data-browser-forward>→</button><button type="button" data-browser-refresh>↻</button><label><span>◉</span><input data-browser-address maxlength="300" value="portfolio://home" aria-label="Address"></label><button type="button" data-browser-go>Go</button></div><div class="browser-page" data-browser-page></div></div></template>
+  <template id="app-terminal"><div class="terminal-app"><div class="terminal-tabs"><button class="active" type="button">Portfolio Terminal</button><button type="button">＋</button><span>Safe local runtime · no eval</span></div><div class="terminal-workspace"><section class="terminal-console"><div data-terminal-output class="terminal-output" aria-live="polite"></div><form data-terminal-form><label><span data-terminal-prompt>PS C:\Users\Rey&gt;</span><input data-terminal-input maxlength="1000" autocomplete="off" spellcheck="false" aria-label="Terminal command"></label></form></section><aside class="terminal-runner"><header><strong>Code runner</strong><select data-terminal-language aria-label="Programming language"><option>Python</option><option>JavaScript</option><option>Java</option><option>C++</option></select></header><textarea data-terminal-code maxlength="12000" spellcheck="false">print("Hello from Portfolio OS")
+print(6 * 7)</textarea><button class="toolbar-primary" type="button" data-terminal-run>▶ Run safely</button><pre data-terminal-code-output>Ready.</pre></aside></div></div></template>
+  <template id="app-ide"><div class="ide-app"><header class="ide-menu"><span>File</span><span>Edit</span><span>View</span><span>Navigate</span><span>Code</span><span>Run</span><strong>Rey IDE</strong></header><div class="ide-toolbar"><button type="button" data-ide-run>▶</button><select data-ide-language><option>Python</option><option>Java</option><option>C++</option><option>JavaScript</option></select><span>main</span><button type="button" data-open="transpiler">⇄ Transpile</button></div><div class="ide-layout"><aside><b>PROJECT</b><button class="active" type="button" data-ide-file="main.py">⌄ portfolio-os<br><span>◈ main.py</span></button><button type="button" data-ide-file="agent.py"><span>✦ agent.py</span></button><button type="button" data-ide-file="gui.yml"><span>⌘ gui.yml</span></button></aside><section><div class="editor-tabs"><button class="active" type="button"><span data-ide-tab>main.py</span> ×</button></div><div class="code-editor"><pre aria-hidden="true" data-line-numbers>1
+2
+3
+4
+5
+6
+7
+8
+9
+10</pre><textarea data-ide-editor maxlength="30000" spellcheck="false">name = "Rey"
+skills = ["Java", "Python", "Angular", "AI"]
+
+def introduce(person):
+    return f"Hello, {person}. Welcome to Portfolio OS."
+
+print(introduce(name))
+print("Skills:", ", ".join(skills))</textarea></div><div class="ide-output"><header><b>Run</b><button type="button" data-ide-clear>Clear</button></header><pre data-ide-output>Process ready.</pre></div></section></div></div></template>
+  <template id="app-designer"><div class="designer-app"><header class="designer-toolbar"><div><strong>GUI Designer</strong><span data-designer-project>Untitled.posapp</span></div><button type="button" data-designer-new>New</button><button type="button" data-designer-demo>Load demo</button><button type="button" data-designer-run>▶ Preview</button><button class="toolbar-primary" type="button" data-designer-package>Package app</button></header><div class="designer-layout"><aside class="designer-palette"><b>COMPONENTS</b><button draggable="true" type="button" data-component="label">T <span>Label</span></button><button draggable="true" type="button" data-component="input">▭ <span>Input field</span></button><button draggable="true" type="button" data-component="button">▣ <span>Button</span></button><button draggable="true" type="button" data-component="output">= <span>Output</span></button><hr><b>ACTIONS</b><small>Connect inputs → button → output. Tap Connect, then components, on phones.</small><button class="connect-tool" type="button" data-connect-mode>⌁ Connect</button></aside><section class="designer-center"><div class="designer-stage-wrap"><div class="designer-stage" data-designer-stage tabindex="0"><div class="stage-grid"></div><svg data-designer-wires aria-hidden="true"></svg><p class="stage-empty">Drag or tap components to begin</p></div></div><div class="designer-code"><header><div class="code-tabs" data-code-tabs><button class="active" type="button" data-format="yaml">YAML</button><button type="button" data-format="python">Python UI</button><button type="button" data-format="tkinter">Tkinter</button><button type="button" data-format="pyqt">PyQt</button><button type="button" data-format="kivy">Kivy</button><button type="button" data-format="swing">Java Swing</button><button type="button" data-format="win32">C++ Win32</button></div><button type="button" data-code-apply>Apply code</button><button type="button" data-code-download>Download</button></header><textarea data-designer-code maxlength="40000" spellcheck="false"></textarea></div></section><aside class="designer-inspector"><b>PROPERTIES</b><div data-inspector-empty><p>Select a component.</p></div><form data-inspector-form hidden><label>ID<input name="id" maxlength="32"></label><label>Text<input name="text" maxlength="80"></label><label>X<input name="x" type="number" min="0" max="900"></label><label>Y<input name="y" type="number" min="0" max="600"></label><label>Width<input name="w" type="number" min="60" max="500"></label><label>Operation<select name="operation"><option value="none">None</option><option value="add">Add</option><option value="subtract">Subtract</option><option value="multiply">Multiply</option><option value="divide">Divide</option><option value="formula">Custom formula</option><option value="join">Join text</option><option value="upper">Uppercase</option><option value="lower">Lowercase</option><option value="clear">Clear</option></select></label><label>Formula<input name="formula" maxlength="120" placeholder="input1 * (input2 + 3)"></label><button class="danger-button" type="button" data-designer-delete>Delete component</button></form><hr><b>CONNECTIONS</b><div class="connection-list" data-connection-list><small>No connections yet.</small></div></aside></div></div></template>
+  <template id="app-transpiler"><div class="transpiler-app"><header class="transpiler-head"><div><span class="app-icon transpiler-icon">{ }</span><span><strong>HumanCode Transpiler</strong><small>Native Python · HumanCode · YAML GUI</small></span></div><button type="button" data-transpile-run>⚡ Transpile</button><button class="toolbar-primary" type="button" data-transpile-download>⇩ Download source</button></header><div class="transpiler-options"><label>Input<select data-transpile-input><option value="python">Native Python</option><option value="human-en">HumanCode — English</option><option value="human-fil">HumanCode — Filipino</option><option value="yaml">GUI YAML</option></select></label><label>Output<select data-transpile-target><option value="java">Java</option><option value="cpp">C++</option><option value="python">Python</option><option value="swing">Java Swing</option><option value="tkinter">Python Tkinter</option><option value="pyqt">Python PyQt</option><option value="kivy">Python Kivy</option></select></label><label>Custom print keyword<input data-custom-print maxlength="24" value="show"></label><span class="local-badge">● Offline compiler</span></div><div class="transpiler-editors"><section><header><b>INPUT</b><button type="button" data-transpile-sample>Load sample</button></header><textarea data-transpile-source maxlength="40000" spellcheck="false">class Engineer:
+    def __init__(self, name):
+        self.name = name
+
+    def introduce(self):
+        return "Hello, " + self.name
+
+rey = Engineer("Rey")
+print(rey.introduce())
+for i in range(3):
+    print(i)</textarea></section><section><header><b>OUTPUT</b><button type="button" data-transpile-copy>Copy</button></header><pre data-transpile-output></pre></section></div><footer><span>Supported Python: variables, input, print, conditions, loops, functions, classes, inheritance, overriding, lists, lambdas, comprehensions, and decorators.</span><button type="button" data-install-transpiled>⊞ Install as Portfolio app</button></footer></div></template>
+  <template id="app-agent"><div class="agent-app"><aside><div class="agent-orb">✦<i></i></div><h2>Rey Local AI</h2><p>Embedded portfolio assistant. Requests stay in this browser; no OpenAI or remote model endpoint is used.</p><div class="agent-spec"><span>MODEL</span><b>RLAI-1 · on-device</b><span>KNOWLEDGE</span><b>Portfolio + coding</b><span>NETWORK</span><b>Not required</b></div><button type="button" data-agent-clear>New conversation</button></aside><section><header><div><span class="status-dot"></span><b>Local model ready</b></div><small>Intent routing + weighted retrieval + deterministic generation</small></header><div class="agent-chat" data-agent-chat aria-live="polite"><article class="assistant-message"><span>✦</span><p>Hello. Ask about Rey’s experience, projects, skills, Portfolio OS, or request a small code example.</p></article></div><div class="agent-suggestions"><button type="button">Summarize Rey’s experience</button><button type="button">Explain Skyler</button><button type="button">Write a Java example</button></div><form data-agent-form><textarea maxlength="1200" rows="2" placeholder="Message the local assistant" aria-label="Message"></textarea><button type="submit" aria-label="Send">↑</button></form></section></div></template>
+  <template id="app-store"><div class="store-app app-scroll"><header class="app-page-heading"><div><p class="kicker">PORTFOLIO APP STUDIO</p><h1>Install local apps</h1></div><button class="toolbar-primary" type="button" data-import-app>＋ Import package</button></header><div class="store-notice"><span>⊞</span><div><b>Supported packages</b><p>Install `.posapp`, JSON, or YAML apps generated by GUI Designer and Transpiler. Windows `.exe` files can be registered as downloadable portfolio items, but browsers cannot execute native Windows binaries.</p></div></div><h2>Built-in applications</h2><div class="store-grid"><article><span class="app-icon designer-icon">⌘</span><div><b>GUI Designer</b><small>Visual app builder</small></div><button type="button" data-open="designer">Open</button></article><article><span class="app-icon transpiler-icon">{ }</span><div><b>Transpiler.exe</b><small>Python · Java · C++</small></div><button type="button" data-open="transpiler">Open</button></article><article><span class="app-icon agent-icon">✦</span><div><b>Rey Local AI</b><small>Offline assistant</small></div><button type="button" data-open="agent">Open</button></article></div><h2>Installed by you</h2><div class="store-grid" data-installed-apps><div class="empty-card"><b>No installed apps</b><span>Build one in GUI Designer or import a package.</span></div></div></div></template>
+  <template id="app-settings"><div class="settings-app"><aside><h2>Settings</h2><label>⌕<input type="search" placeholder="Find a setting" maxlength="60"></label><button class="active" type="button">▣ Personalization</button><button type="button">◫ System</button><button type="button">♙ Accounts</button><button type="button">⌘ Accessibility</button><button type="button">⌁ Privacy & security</button></aside><section class="app-scroll"><header><div class="settings-avatar">RV</div><div><h1 data-settings-name>Rey Victor Mendillo</h1><p>Local Portfolio OS profile</p></div></header><h2>Choose a theme</h2><div class="theme-grid"><button class="active" type="button" data-theme-choice="windows"><i class="theme-preview windows-preview"></i><b>Windows 11</b><span>Glass + aurora</span></button><button type="button" data-theme-choice="ios"><i class="theme-preview ios-preview"></i><b>iOS</b><span>Floating dock</span></button><button type="button" data-theme-choice="resume"><i class="theme-preview resume-preview"></i><b>Resume</b><span>Montserrat paper</span></button></div><div class="settings-cards"><article><label><span><b>Profile name</b><small>Creates a separate local preference profile</small></span><input data-profile-name maxlength="40" value="Rey Victor Mendillo"></label></article><article><label><span><b>Accent color</b><small>Applied across Portfolio OS</small></span><input data-accent type="color" value="#59a8ff"></label></article><article><label><span><b>Transparency</b><small>Window glass intensity</small></span><input data-transparency type="range" min="55" max="96" value="78"></label></article><article><label><span><b>Animations</b><small>Window, menu, boot, and wallpaper motion</small></span><input data-motion-toggle type="checkbox" checked></label></article><article><div><span><b>Install Portfolio OS</b><small>Add this PWA to your home screen</small></span><button type="button" data-install-pwa>Install</button></div></article><article><div><span><b>Security baseline</b><small>CSP, safe DOM rendering, sandboxed inputs, URL allowlists, size limits, no eval</small></span><span class="secure-pill">Protected</span></div></article></div><button class="danger-button" type="button" data-reset-settings>Reset local settings</button></section></div></template>
+  <template id="app-calculator"><div class="calculator-app"><div class="calculator-display"><small data-calc-expression></small><output data-calc-output>0</output></div><div class="calculator-grid"><button type="button" data-calc="clear">AC</button><button type="button" data-calc="sign">±</button><button type="button" data-calc="percent">%</button><button class="operator" type="button" data-calc="/">÷</button><button type="button" data-calc="7">7</button><button type="button" data-calc="8">8</button><button type="button" data-calc="9">9</button><button class="operator" type="button" data-calc="*">×</button><button type="button" data-calc="4">4</button><button type="button" data-calc="5">5</button><button type="button" data-calc="6">6</button><button class="operator" type="button" data-calc="-">−</button><button type="button" data-calc="1">1</button><button type="button" data-calc="2">2</button><button type="button" data-calc="3">3</button><button class="operator" type="button" data-calc="+">+</button><button class="zero" type="button" data-calc="0">0</button><button type="button" data-calc=".">.</button><button class="operator" type="button" data-calc="=">=</button></div></div></template>
   <script src="script.js"></script>
 </body>
 </html>

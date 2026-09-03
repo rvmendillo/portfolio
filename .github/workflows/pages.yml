@@ -26,7 +26,8 @@ jobs:
       - name: Stage public site
         run: |
           mkdir -p .pages
-          cp index.html styles.css script.js .nojekyll .pages/
+          cp index.html styles.css script.js manifest.webmanifest sw.js icon.svg .nojekyll .pages/
+          cp -R assets .pages/assets
       - uses: actions/upload-pages-artifact@v4
         with:
           path: .pages

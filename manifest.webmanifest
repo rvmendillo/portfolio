@@ -1,0 +1,16 @@
+{
+  "name": "Rey Portfolio OS",
+  "short_name": "Portfolio OS",
+  "description": "Rey Victor Mendillo's interactive software engineering and AI portfolio.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#071326",
+  "theme_color": "#071326",
+  "categories": ["portfolio", "productivity", "developer"],
+  "icons": [
+    {"src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}
+  ]
+}
