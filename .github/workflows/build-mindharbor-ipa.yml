@@ -5,6 +5,11 @@ on:
     paths:
       - 'ios/MindHarbor-native-ios-v0.1.zip'
       - '.github/workflows/build-mindharbor-ipa.yml'
+  pull_request:
+    paths:
+      - 'ios/MindHarbor-native-ios-v0.1.zip'
+      - 'ios/mindharbor-pr-build-trigger.txt'
+      - '.github/workflows/build-mindharbor-ipa.yml'
   workflow_dispatch:
 
 permissions:
@@ -50,6 +55,7 @@ jobs:
           retention-days: 30
 
       - name: Publish IPA to repository
+        if: github.event_name == 'push'
         run: |
           cd "$GITHUB_WORKSPACE"
           mkdir -p builds
