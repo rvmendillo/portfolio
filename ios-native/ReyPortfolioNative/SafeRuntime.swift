@@ -313,8 +313,11 @@ enum NativeTranspiler {
         case "formula":
             var expression = button.formula.isEmpty ? "0" : button.formula
             for (index, input) in inputs.enumerated() {
-                expression = expression.replacingOccurrences(of: input, with: "num(\(getter(input)))")
-                expression = expression.replacingOccurrences(of: "input\(index + 1)", with: "num(\(getter(input)))")
+                expression = expression.replacingOccurrences(of: input, with: "__VALUE_\(index)__")
+                expression = expression.replacingOccurrences(of: "input\(index + 1)", with: "__VALUE_\(index)__")
+            }
+            for (index, input) in inputs.enumerated() {
+                expression = expression.replacingOccurrences(of: "__VALUE_\(index)__", with: "num(\(getter(input)))")
             }
             return expression
         default: return raw.first ?? "''"
@@ -531,6 +534,16 @@ enum NativeTranspiler {
                 case "multiply": expr = nums.isEmpty ? "0.0" : nums.joined(separator: " * ")
                 case "divide":
                     if let first = nums.first { expr = nums.dropFirst().reduce(first) { "\($0) / ((\($1)) == 0 ? 1 : (\($1)))" } } else { expr = "0.0" }
+                case "formula":
+                    var formula = button.formula.isEmpty ? "0.0" : button.formula
+                    for (index, input) in inputs.enumerated() {
+                        formula = formula.replacingOccurrences(of: input, with: "__VALUE_\(index)__")
+                        formula = formula.replacingOccurrences(of: "input\(index + 1)", with: "__VALUE_\(index)__")
+                    }
+                    for (index, input) in inputs.enumerated() {
+                        formula = formula.replacingOccurrences(of: "__VALUE_\(index)__", with: "num(\(ident(input)).getText())")
+                    }
+                    expr = formula
                 default: expr = nums.first ?? "0.0"
                 }
                 out.append("        double result = \(expr);")
