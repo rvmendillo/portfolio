@@ -1,0 +1,33 @@
+name: ReyPortfolioOS
+options:
+  bundleIdPrefix: com.reyvictor
+  deploymentTarget:
+    iOS: "16.0"
+  xcodeVersion: "16.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+targets:
+  ReyPortfolioOS:
+    type: application
+    platform: iOS
+    sources:
+      - path: ReyPortfolioOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.reyvictor.portfolioos
+        PRODUCT_NAME: ReyPortfolioOS
+        MARKETING_VERSION: 1.0.0
+        CURRENT_PROJECT_VERSION: 1
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Rey Portfolio OS
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIRequiresFullScreen: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+    scheme:
+      gatherCoverageData: false
+
