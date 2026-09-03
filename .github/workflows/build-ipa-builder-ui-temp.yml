@@ -1,4 +1,5 @@
 name: Temporary Build IPA Builder UI
+# rebuild after GitHub API compatibility fix
 
 on:
   push:
