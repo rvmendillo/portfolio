@@ -19,4 +19,6 @@ This bundle targets `rvmendillo/portfolio`. Push it to `main`, then set **Settin
 
 The separate **Build iPhone IPA** workflow uses a GitHub-hosted macOS runner to compile `ios/` and upload `ReyPortfolioOS-unsigned.ipa`. The wrapper opens the live Portfolio OS, so web updates appear without rebuilding the shell. Import the unsigned IPA into Feather and sign it with your certificate and matching provisioning profile.
 
+The independent **Build Native iOS IPA** workflow compiles `ios-native/` into `ReyPortfolioNative-unsigned.ipa`. This SwiftUI edition contains native screens, a bundled PDFKit resume, local developer tools, a touch GUI Designer, and an offline assistant; it does not use WebKit or load the Pages site.
+
 GitHub Pages sites are public even when the source repository is private. Hosting Pages directly from a private repository requires GitHub Pro, Team, or Enterprise; otherwise make the repository public before enabling Pages.

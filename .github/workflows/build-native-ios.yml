@@ -1,0 +1,58 @@
+name: Build Native iOS IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "ios-native/**"
+      - ".github/workflows/build-native-ios.yml"
+
+jobs:
+  build:
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: ios-native
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate native Xcode project
+        run: xcodegen generate
+
+      - name: Build unsigned native application
+        run: |
+          xcodebuild \
+            -project ReyPortfolioNative.xcodeproj \
+            -scheme ReyPortfolioNative \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            clean build
+
+      - name: Confirm native-only binary
+        run: |
+          if grep -R "WKWebView\|WebKit" ReyPortfolioNative; then
+            echo "Native target must not contain a web view"
+            exit 1
+          fi
+
+      - name: Package native IPA for Feather
+        run: |
+          mkdir Payload
+          cp -R build/Build/Products/Release-iphoneos/ReyPortfolioNative.app Payload/
+          ditto -c -k --sequesterRsrc --keepParent Payload ReyPortfolioNative-unsigned.ipa
+
+      - name: Upload native IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ReyPortfolioNative-unsigned-ipa
+          path: ios-native/ReyPortfolioNative-unsigned.ipa
+          if-no-files-found: error
