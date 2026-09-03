@@ -209,7 +209,7 @@ final class GitHubBuildManager: ObservableObject {
         request.httpMethod = method
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-        request.setValue("2026-03-10", forHTTPHeaderField: "X-GitHub-Api-Version")
+        request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
 
         if let jsonBody {
             request.httpBody = try JSONSerialization.data(withJSONObject: jsonBody)
