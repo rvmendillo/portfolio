@@ -8,6 +8,9 @@ on:
       - 'budgetflow-build/source.b64.part*'
       - '.github/workflows/build-budgetflow-ipa.yml'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-15
@@ -19,7 +22,7 @@ jobs:
       - name: Reconstruct source bundle
         shell: bash
         run: |
-          cat budgetflow-build/source.b64.part00               budgetflow-build/source.b64.part01               budgetflow-build/source.b64.part02               budgetflow-build/source.b64.part03 > /tmp/BudgetFlow.b64
+          cat budgetflow-build/source.b64.part00 budgetflow-build/source.b64.part01 budgetflow-build/source.b64.part02 budgetflow-build/source.b64.part03 > /tmp/BudgetFlow.b64
           base64 --decode /tmp/BudgetFlow.b64 > /tmp/BudgetFlow-native-ios.zip
           mkdir -p /tmp/budgetflow-src
           unzip -q /tmp/BudgetFlow-native-ios.zip -d /tmp/budgetflow-src
@@ -31,8 +34,10 @@ jobs:
       - name: Build unsigned iPhone app
         shell: bash
         run: |
+          touch "$GITHUB_WORKSPACE/build.log"
           cd /tmp/budgetflow-src/BudgetFlow
-          xcodebuild             -project BudgetFlow.xcodeproj             -scheme BudgetFlow             -configuration Release             -sdk iphoneos             -destination 'generic/platform=iOS'             -derivedDataPath /tmp/BudgetFlowDerived             CODE_SIGNING_ALLOWED=NO             CODE_SIGNING_REQUIRED=NO             CODE_SIGN_IDENTITY=""             build
+          set -o pipefail
+          xcodebuild -project BudgetFlow.xcodeproj -scheme BudgetFlow -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath /tmp/BudgetFlowDerived CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build 2>&1 | tee "$GITHUB_WORKSPACE/build.log"
 
       - name: Package IPA
         shell: bash
@@ -53,3 +58,22 @@ jobs:
           path: BudgetFlow-unsigned.ipa
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish IPA release
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh release view budgetflow-build >/dev/null 2>&1 || gh release create budgetflow-build --title "BudgetFlow iOS Build" --notes "Unsigned BudgetFlow IPA for sideload signing."
+          gh release upload budgetflow-build BudgetFlow-unsigned.ipa build.log --clobber
+
+      - name: Publish failure log
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          test -f build.log || echo "Build failed before xcodebuild started." > build.log
+          gh release view budgetflow-build-log >/dev/null 2>&1 || gh release create budgetflow-build-log --title "BudgetFlow iOS Build Log" --notes "Latest failed BudgetFlow IPA build log."
+          gh release upload budgetflow-build-log build.log --clobber
