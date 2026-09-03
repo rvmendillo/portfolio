@@ -1,0 +1,47 @@
+name: Build MindHarbor IPA
+
+on:
+  push:
+    paths:
+      - 'ios/MindHarbor-native-ios-v0.1.zip'
+      - '.github/workflows/build-mindharbor-ipa.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract project
+        run: |
+          rm -rf "$RUNNER_TEMP/mindharbor"
+          mkdir -p "$RUNNER_TEMP/mindharbor"
+          unzip -q ios/MindHarbor-native-ios-v0.1.zip -d "$RUNNER_TEMP/mindharbor"
+          cd "$RUNNER_TEMP/mindharbor/MindHarbor"
+          xcodebuild -list -project MindHarbor.xcodeproj
+
+      - name: Build unsigned iPhone app
+        run: |
+          cd "$RUNNER_TEMP/mindharbor/MindHarbor"
+          xcodebuild             -project MindHarbor.xcodeproj             -target MindHarbor             -configuration Release             -sdk iphoneos             -derivedDataPath "$RUNNER_TEMP/MindHarborDerivedData"             CODE_SIGNING_ALLOWED=NO             CODE_SIGNING_REQUIRED=NO             CODE_SIGN_IDENTITY=""             build
+
+      - name: Package IPA
+        run: |
+          APP_PATH="$(find "$RUNNER_TEMP/MindHarborDerivedData/Build/Products/Release-iphoneos" -maxdepth 1 -name '*.app' -type d | head -n 1)"
+          test -n "$APP_PATH"
+          rm -rf "$RUNNER_TEMP/Payload"
+          mkdir -p "$RUNNER_TEMP/Payload"
+          cp -R "$APP_PATH" "$RUNNER_TEMP/Payload/"
+          cd "$RUNNER_TEMP"
+          /usr/bin/zip -qry MindHarbor-unsigned.ipa Payload
+          ls -lh MindHarbor-unsigned.ipa
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: MindHarbor-unsigned-IPA
+          path: ${{ runner.temp }}/MindHarbor-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 30
