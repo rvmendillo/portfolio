@@ -55,7 +55,9 @@ struct GitHubAPIError: LocalizedError {
 
 private struct ContentUploadResponse: Decodable {
     struct ContentInfo: Decodable { let sha: String }
+    struct CommitInfo: Decodable { let sha: String }
     let content: ContentInfo?
+    let commit: CommitInfo?
 }
 
 private struct WorkflowRunEnvelope: Decodable {
@@ -68,6 +70,7 @@ private struct WorkflowRun: Decodable {
     let conclusion: String?
     let display_title: String
     let html_url: String?
+    let head_sha: String
 }
 
 private struct ArtifactEnvelope: Decodable {
@@ -92,7 +95,6 @@ final class GitHubBuildManager: ObservableObject {
     @Published var lastError: String?
 
     private let workflowFile = "ipa-builder-service.yml"
-    private let dispatchBranch = "main"
     private let jobsBranch = "ipa-builder-jobs"
 
     init() {
@@ -143,20 +145,18 @@ final class GitHubBuildManager: ObservableObject {
 
         let jobID = UUID().uuidString.lowercased()
         let jobPath = "ipa-builder-jobs/\(jobID)/project.json"
-        var uploadedSHA: String?
+        var uploadedContentSHA: String?
 
         do {
             status = "Uploading project to GitHub…"
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.sortedKeys]
             let projectData = try encoder.encode(project)
-            uploadedSHA = try await uploadProject(projectData, path: jobPath, jobID: jobID)
+            let upload = try await uploadProject(projectData, path: jobPath, jobID: jobID)
+            uploadedContentSHA = upload.contentSHA
 
-            status = "Starting macOS runner…"
-            try await dispatch(jobID: jobID, jobPath: jobPath)
-
-            status = "Waiting for GitHub Actions…"
-            let run = try await findRun(jobID: jobID)
+            status = "macOS build queued…"
+            let run = try await findRun(commitSHA: upload.commitSHA)
             if let urlString = run.html_url {
                 lastRunURL = URL(string: urlString)
             }
@@ -178,8 +178,8 @@ final class GitHubBuildManager: ObservableObject {
             status = "Build failed"
         }
 
-        if let uploadedSHA {
-            try? await deleteProject(path: jobPath, sha: uploadedSHA, jobID: jobID)
+        if let uploadedContentSHA {
+            try? await deleteProject(path: jobPath, sha: uploadedContentSHA, jobID: jobID)
         }
 
         isBuilding = false
@@ -227,54 +227,48 @@ final class GitHubBuildManager: ObservableObject {
         return (data, http)
     }
 
-    private func uploadProject(_ data: Data, path: String, jobID: String) async throws -> String {
+    private func uploadProject(
+        _ data: Data,
+        path: String,
+        jobID: String
+    ) async throws -> (contentSHA: String, commitSHA: String) {
         let body: [String: Any] = [
             "message": "IPA Builder job \(jobID)",
             "content": data.base64EncodedString(),
             "branch": jobsBranch
         ]
+
         let (responseData, _) = try await request(
             path: "/repos/\(owner)/\(repo)/contents/\(path)",
             method: "PUT",
             jsonBody: body
         )
+
         let response = try JSONDecoder().decode(ContentUploadResponse.self, from: responseData)
-        guard let sha = response.content?.sha else {
-            throw GitHubAPIError(message: "Project upload did not return a content SHA.")
+        guard let contentSHA = response.content?.sha,
+              let commitSHA = response.commit?.sha else {
+            throw GitHubAPIError(message: "Project upload did not return GitHub commit metadata.")
         }
-        return sha
+        return (contentSHA, commitSHA)
     }
 
-    private func dispatch(jobID: String, jobPath: String) async throws {
-        let body: [String: Any] = [
-            "ref": dispatchBranch,
-            "inputs": ["job_id": jobID, "job_path": jobPath]
-        ]
-        _ = try await request(
-            path: "/repos/\(owner)/\(repo)/actions/workflows/\(workflowFile)/dispatches",
-            method: "POST",
-            jsonBody: body
-        )
-    }
-
-    private func findRun(jobID: String) async throws -> WorkflowRun {
-        let wanted = "IPA Builder \(jobID)"
+    private func findRun(commitSHA: String) async throws -> WorkflowRun {
         for _ in 0..<80 {
             let (data, _) = try await request(
                 path: "/repos/\(owner)/\(repo)/actions/workflows/\(workflowFile)/runs",
                 query: [
-                    URLQueryItem(name: "event", value: "workflow_dispatch"),
-                    URLQueryItem(name: "branch", value: dispatchBranch),
+                    URLQueryItem(name: "event", value: "push"),
+                    URLQueryItem(name: "branch", value: jobsBranch),
                     URLQueryItem(name: "per_page", value: "30")
                 ]
             )
             let envelope = try JSONDecoder().decode(WorkflowRunEnvelope.self, from: data)
-            if let run = envelope.workflow_runs.first(where: { $0.display_title == wanted }) {
+            if let run = envelope.workflow_runs.first(where: { $0.head_sha == commitSHA }) {
                 return run
             }
             try await Task.sleep(nanoseconds: 3_000_000_000)
         }
-        throw GitHubAPIError(message: "The workflow did not appear in time.")
+        throw GitHubAPIError(message: "The macOS build did not appear in GitHub Actions.")
     }
 
     private func waitForCompletion(runID: Int64) async throws -> WorkflowRun {
@@ -306,7 +300,7 @@ final class GitHubBuildManager: ObservableObject {
 
     private func deleteProject(path: String, sha: String, jobID: String) async throws {
         let body: [String: Any] = [
-            "message": "Clean IPA Builder job \(jobID)",
+            "message": "[skip ci] Clean IPA Builder job \(jobID)",
             "sha": sha,
             "branch": jobsBranch
         ]
@@ -339,6 +333,7 @@ final class GitHubBuildManager: ObservableObject {
         if fileManager.fileExists(atPath: destination.path) {
             try fileManager.removeItem(at: destination)
         }
+
         try archive.extract(entry, to: destination)
         try? fileManager.removeItem(at: tempZIP)
         return destination
