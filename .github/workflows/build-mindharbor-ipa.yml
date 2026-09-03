@@ -33,7 +33,7 @@ jobs:
       - name: Build unsigned iPhone app
         run: |
           cd "$RUNNER_TEMP/mindharbor/MindHarbor"
-          xcodebuild -project MindHarbor.xcodeproj -target MindHarbor -configuration Release -sdk iphoneos -derivedDataPath "$RUNNER_TEMP/MindHarborDerivedData" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+          xcodebuild -project MindHarbor.xcodeproj -scheme MindHarbor -configuration Release -sdk iphoneos -derivedDataPath "$RUNNER_TEMP/MindHarborDerivedData" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
 
       - name: Package IPA
         run: |
