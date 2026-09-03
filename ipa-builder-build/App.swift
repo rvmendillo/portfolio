@@ -167,22 +167,8 @@ struct ProjectJSONDocument: FileDocument {
 }
 
 struct ContentView: View {
-    @EnvironmentObject private var store: BuilderStore
-
     var body: some View {
-        TabView {
-            NavigationStack { ProjectsView() }
-                .tabItem { Label("Projects", systemImage: "square.stack.3d.up") }
-
-            NavigationStack { DesignerView() }
-                .tabItem { Label("Designer", systemImage: "rectangle.3.group") }
-
-            NavigationStack { CodePreviewView() }
-                .tabItem { Label("Code", systemImage: "chevron.left.forwardslash.chevron.right") }
-
-            NavigationStack { BuildView() }
-                .tabItem { Label("Build", systemImage: "hammer") }
-        }
+        WorkspaceView()
     }
 }
 
@@ -477,11 +463,13 @@ struct BuildView: View {
 @main
 struct IPABuilderApp: App {
     @StateObject private var store = BuilderStore()
+    @StateObject private var github = GitHubBuildManager()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(store)
+                .environmentObject(github)
         }
     }
 }
