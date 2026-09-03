@@ -697,7 +697,7 @@ private struct GitHubSettingsSheet: View {
                 }
 
                 Section {
-                    Text("Use a fine-grained token restricted to this repository with Contents: read/write and Actions: read/write. The token stays in this device's Keychain.")
+                    Text("Use a fine-grained token restricted to this repository with Contents: read/write and Actions: read. Uploading the project automatically starts the macOS build. The token stays in this device's Keychain.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
