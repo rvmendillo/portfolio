@@ -56,7 +56,7 @@ struct NativeTranspilerView: View {
     @State private var source = NativeTranspiler.samples["Python"] ?? ""
     @State private var output = ""
     let inputs = ["Python", "HumanCode EN", "HumanCode FIL", "GUI YAML"]
-    let targets = ["Java", "C++", "Python", "Tkinter", "PyQt", "Kivy"]
+    let targets = ["Java", "Java Swing", "C++", "Python", "Tkinter", "PyQt", "Kivy"]
     var body: some View {
         VStack(spacing: 10) {
             HStack { Picker("Input", selection: $input) { ForEach(inputs, id: \.self) { Text($0) } }; Picker("Target", selection: $target) { ForEach(targets, id: \.self) { Text($0) } } }.pickerStyle(.menu).padding(.horizontal, 10)
