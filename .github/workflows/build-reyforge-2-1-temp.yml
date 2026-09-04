@@ -29,23 +29,10 @@ jobs:
           from pathlib import Path
           p = Path('ipa-builder-build/LocalhostInstaller.swift')
           s = p.read_text()
-          old_background = '''    private func beginBackgroundTask() {
-              guard backgroundTask == .invalid else { return }
-              backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "ReyForgeLocalInstall") { [weak self] in
-                  self?.stopServer()
-              }
-          }
 
-          private func endBackgroundTask() {
-              let task = backgroundTask
-              guard task != .invalid else { return }
-              backgroundTask = .invalid
-              DispatchQueue.main.async {
-                  UIApplication.shared.endBackgroundTask(task)
-              }
-          }
-          '''
-          new_background = '''    private func beginBackgroundTask() {
+          start = s.index('    private func beginBackgroundTask() {')
+          end = s.index('    private func publishStatus(', start)
+          replacement = '''    private func beginBackgroundTask() {
               Task { @MainActor [weak self] in
                   guard let self, self.backgroundTask == .invalid else { return }
                   self.backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "ReyForgeLocalInstall") { [weak self] in
@@ -63,28 +50,19 @@ jobs:
                   UIApplication.shared.endBackgroundTask(task)
               }
           }
-          '''
-          if old_background not in s:
-              raise SystemExit('background-task source block not found')
-          s = s.replace(old_background, new_background, 1)
 
-          old_identity = '''        guard status == errSecSuccess,
-                    let items = rawItems as? [[String: Any]],
-                    let identity = items.first?[kSecImportItemIdentity as String] as? SecIdentity else {
-                  throw LocalhostInstallError.invalidBundledIdentity
-              }
-              return identity
           '''
-          new_identity = '''        guard status == errSecSuccess,
-                    let items = rawItems as? [[String: Any]],
-                    let rawIdentity = items.first?[kSecImportItemIdentity as String] else {
-                  throw LocalhostInstallError.invalidBundledIdentity
-              }
-              return rawIdentity as! SecIdentity
-          '''
-          if old_identity not in s:
-              raise SystemExit('SecIdentity source block not found')
-          s = s.replace(old_identity, new_identity, 1)
+          s = s[:start] + replacement + s[end:]
+
+          old_cast = 'let identity = items.first?[kSecImportItemIdentity as String] as? SecIdentity else {'
+          new_cast = 'let rawIdentity = items.first?[kSecImportItemIdentity as String] else {'
+          if old_cast not in s:
+              raise SystemExit('SecIdentity cast line not found')
+          s = s.replace(old_cast, new_cast, 1)
+          return_line = '        return identity\n'
+          if return_line not in s:
+              raise SystemExit('SecIdentity return line not found')
+          s = s.replace(return_line, '        return rawIdentity as! SecIdentity\n', 1)
           p.write_text(s)
           PY
 
