@@ -1,4 +1,4 @@
-name: Temporary Build ReyForge 2.1.1
+name: Temporary Build ReyForge 2.2
 
 on:
   push:
@@ -20,15 +20,11 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
-      - name: Download tiny local SmolLM2 135M
+      - name: Prepare runtime model directory
         run: |
           mkdir -p ipa-builder-build/Resources
           rm -f ipa-builder-build/Resources/*.gguf
-          curl --fail --location --retry 3 \
-            "https://huggingface.co/unsloth/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q4_K_M.gguf?download=true" \
-            --output ipa-builder-build/Resources/SmolLM2-360M-Instruct-Q4_K_M.gguf
-          test -s ipa-builder-build/Resources/SmolLM2-360M-Instruct-Q4_K_M.gguf
-          echo "ed5fa30c487b282ec156c29062f1222e5c20875a944ac98289dbd242e947f747  ipa-builder-build/Resources/SmolLM2-360M-Instruct-Q4_K_M.gguf" | shasum -a 256 -c -
+          echo "Qwen2.5-Coder-3B is downloaded once in-app instead of bundled in the IPA."
 
       - name: Generate ReyForge app icon
         run: |
@@ -55,7 +51,7 @@ jobs:
               font = ImageFont.truetype('/System/Library/Fonts/SFNS.ttf', 92)
           except Exception:
               font = ImageFont.load_default()
-          label='2.1.1'
+          label='2.2'
           box=d.textbbox((0,0),label,font=font)
           d.text(((size-(box[2]-box[0]))/2,800),label,font=font,fill=(238,233,255))
           im.save(out)
@@ -99,7 +95,7 @@ jobs:
           p.write_text(s)
           PY
 
-      - name: Build ReyForge 2.1.1 unsigned
+      - name: Build ReyForge 2.2 unsigned
         working-directory: ipa-builder-build
         run: |
           set -o pipefail
@@ -121,19 +117,23 @@ jobs:
           rm -rf Payload
           mkdir Payload
           cp -R build/Build/Products/Release-iphoneos/ReyForge.app Payload/
-          ditto -c -k --sequesterRsrc --keepParent Payload ReyForge-2.1.1-unsigned.ipa
-          unzip -t ReyForge-2.1.1-unsigned.ipa
+          ditto -c -k --sequesterRsrc --keepParent Payload ReyForge-2.2-unsigned.ipa
+          unzip -t ReyForge-2.2-unsigned.ipa
           test -f Payload/ReyForge.app/ReyForge
-          test -f Payload/ReyForge.app/SmolLM2-360M-Instruct-Q4_K_M.gguf
-          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Payload/ReyForge.app/Info.plist
-          /usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' Payload/ReyForge.app/Info.plist
+          if find Payload/ReyForge.app -name '*.gguf' | grep -q .; then
+            echo "Unexpected bundled GGUF; 3B model must remain runtime-downloadable"
+            exit 1
+          fi
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Payload/ReyForge.app/Info.plist)" = "2.2"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' Payload/ReyForge.app/Info.plist)" = "6"
           file Payload/ReyForge.app/ReyForge
+          du -h ReyForge-2.2-unsigned.ipa
 
       - name: Upload ReyForge IPA
         uses: actions/upload-artifact@v4
         with:
-          name: ReyForge-2.1.1-unsigned-ipa
-          path: ipa-builder-build/ReyForge-2.1.1-unsigned.ipa
+          name: ReyForge-2.2-unsigned-ipa
+          path: ipa-builder-build/ReyForge-2.2-unsigned.ipa
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
