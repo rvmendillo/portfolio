@@ -23,8 +23,9 @@ targets:
     sources:
       - path: App.swift
       - path: StudioModels.swift
-      - path: Studio2View.swift
-      - path: StudioFixes.swift
+      - path: Studio2Workspace.swift
+      - path: StudioComponentRenderer.swift
+      - path: StudioPanels.swift
       - path: LocalVibeModel.swift
       - path: GitHubBuildManager.swift
       - path: Resources
