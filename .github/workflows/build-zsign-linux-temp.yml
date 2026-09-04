@@ -29,7 +29,7 @@ jobs:
           p = Path('zsign/src/zsign.cpp')
           s = p.read_text()
           old = 'arrDylibFiles, bForce, bWeakInject, bEnableCache);'
-          new = 'arrDylibFiles, bForce, bWeakInject, bEnableCache, false);'
+          new = 'arrDylibFiles, bForce, bWeakInject, bEnableCache, true);'
           assert old in s
           p.write_text(s.replace(old, new, 1))
           PY
