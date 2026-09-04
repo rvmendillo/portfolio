@@ -5,6 +5,7 @@ struct HarmonyRenderer {
     static func render(
         sourceURL: URL,
         preset: HarmonyPreset,
+        analysis: MusicalAnalysis,
         leadLevel: Float,
         harmonyLevel: Float,
         destinationDirectory: URL
@@ -27,10 +28,11 @@ struct HarmonyRenderer {
         let submix = AVAudioMixerNode()
         engine.attach(submix)
         engine.connect(submix, to: engine.mainMixerNode, format: renderFormat)
-        engine.mainMixerNode.outputVolume = 0.72
+        engine.mainMixerNode.outputVolume = 0.80
 
         var players: [AVAudioPlayerNode] = []
         var pitchUnits: [AVAudioUnitTimePitch] = []
+        var voiceKinds: [HarmonyVoiceKind] = []
         var files: [AVAudioFile] = []
 
         let dryFile = try AVAudioFile(forReading: sourceURL)
@@ -43,20 +45,20 @@ struct HarmonyRenderer {
         players.append(dryPlayer)
         files.append(dryFile)
 
-        for layer in preset.layers {
+        for voice in preset.voices {
             let file = try AVAudioFile(forReading: sourceURL)
             let player = AVAudioPlayerNode()
             let timePitch = AVAudioUnitTimePitch()
 
-            timePitch.pitch = Float(layer.semitones * 100.0)
+            timePitch.pitch = 0
             timePitch.rate = 1.0
             timePitch.overlap = 8.0
 
             engine.attach(player)
             engine.attach(timePitch)
 
-            player.volume = clamp(layer.gain * harmonyLevel, minimum: 0, maximum: 1)
-            player.pan = clamp(layer.pan, minimum: -1, maximum: 1)
+            player.volume = clamp(voice.gain * harmonyLevel, minimum: 0, maximum: 1)
+            player.pan = clamp(voice.pan, minimum: -1, maximum: 1)
 
             engine.connect(player, to: timePitch, format: sourceFormat)
             engine.connect(timePitch, to: submix, format: sourceFormat)
@@ -64,10 +66,11 @@ struct HarmonyRenderer {
 
             players.append(player)
             pitchUnits.append(timePitch)
+            voiceKinds.append(voice.kind)
             files.append(file)
         }
 
-        let maxFrames: AVAudioFrameCount = 4096
+        let maxFrames: AVAudioFrameCount = 2_048
         try engine.enableManualRenderingMode(.offline, format: renderFormat, maximumFrameCount: maxFrames)
         guard let renderBuffer = AVAudioPCMBuffer(
             pcmFormat: engine.manualRenderingFormat,
@@ -78,8 +81,12 @@ struct HarmonyRenderer {
 
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd-HHmmss"
+        let safeKey = analysis.key.displayName
+            .replacingOccurrences(of: " ", with: "-")
+            .replacingOccurrences(of: "♯", with: "sharp")
+            .replacingOccurrences(of: "♭", with: "flat")
         let outputURL = destinationDirectory.appendingPathComponent(
-            "VoxHarmony-\(preset.id)-\(formatter.string(from: Date())).m4a"
+            "VoxHarmony-\(preset.id)-\(safeKey)-\(formatter.string(from: Date())).m4a"
         )
         if FileManager.default.fileExists(atPath: outputURL.path) {
             try FileManager.default.removeItem(at: outputURL)
@@ -106,8 +113,27 @@ struct HarmonyRenderer {
         let tailFrames: AVAudioFramePosition = 8_192
         let totalFrames = max(1, probe.length + tailFrames)
         var stalledPasses = 0
+        var lastIntervals = Array(repeating: 0.0, count: pitchUnits.count)
 
         while engine.manualRenderingSampleTime < totalFrames {
+            let currentTime = Double(engine.manualRenderingSampleTime) / renderFormat.sampleRate
+            if let frame = analysis.pitchFrame(at: currentTime), let melodyMIDI = frame.midiNote, frame.confidence >= 0.45 {
+                for index in pitchUnits.indices {
+                    let interval = AdaptiveHarmonyPlanner.semitones(
+                        for: voiceKinds[index],
+                        melodyMIDI: melodyMIDI,
+                        analysis: analysis,
+                        time: currentTime
+                    )
+                    lastIntervals[index] = interval
+                    pitchUnits[index].pitch = Float(interval * 100.0)
+                }
+            } else {
+                for index in pitchUnits.indices {
+                    pitchUnits[index].pitch = Float(lastIntervals[index] * 100.0)
+                }
+            }
+
             let remaining = totalFrames - engine.manualRenderingSampleTime
             let requested = AVAudioFrameCount(min(AVAudioFramePosition(maxFrames), remaining))
             if requested == 0 { break }
@@ -170,9 +196,9 @@ enum HarmonyRendererError: LocalizedError {
         case .couldNotCreateRenderBuffer:
             return "VoxHarmony could not allocate its offline render buffer."
         case .renderingStalled:
-            return "The audio engine stalled while rendering the harmony."
+            return "The audio engine stalled while rendering the adaptive harmony."
         case .renderingFailed:
-            return "The audio engine could not finish the harmony render."
+            return "The audio engine could not finish the adaptive harmony render."
         case .outputWasNotCreated:
             return "The harmony render finished without producing an output file."
         }
