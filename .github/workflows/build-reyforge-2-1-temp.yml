@@ -23,6 +23,71 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
+      - name: Patch localhost installer for Swift 6
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('ipa-builder-build/LocalhostInstaller.swift')
+          s = p.read_text()
+          old_background = '''    private func beginBackgroundTask() {
+              guard backgroundTask == .invalid else { return }
+              backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "ReyForgeLocalInstall") { [weak self] in
+                  self?.stopServer()
+              }
+          }
+
+          private func endBackgroundTask() {
+              let task = backgroundTask
+              guard task != .invalid else { return }
+              backgroundTask = .invalid
+              DispatchQueue.main.async {
+                  UIApplication.shared.endBackgroundTask(task)
+              }
+          }
+          '''
+          new_background = '''    private func beginBackgroundTask() {
+              Task { @MainActor [weak self] in
+                  guard let self, self.backgroundTask == .invalid else { return }
+                  self.backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "ReyForgeLocalInstall") { [weak self] in
+                      self?.stopServer()
+                  }
+              }
+          }
+
+          private func endBackgroundTask() {
+              Task { @MainActor [weak self] in
+                  guard let self else { return }
+                  let task = self.backgroundTask
+                  guard task != .invalid else { return }
+                  self.backgroundTask = .invalid
+                  UIApplication.shared.endBackgroundTask(task)
+              }
+          }
+          '''
+          if old_background not in s:
+              raise SystemExit('background-task source block not found')
+          s = s.replace(old_background, new_background, 1)
+
+          old_identity = '''        guard status == errSecSuccess,
+                    let items = rawItems as? [[String: Any]],
+                    let identity = items.first?[kSecImportItemIdentity as String] as? SecIdentity else {
+                  throw LocalhostInstallError.invalidBundledIdentity
+              }
+              return identity
+          '''
+          new_identity = '''        guard status == errSecSuccess,
+                    let items = rawItems as? [[String: Any]],
+                    let rawIdentity = items.first?[kSecImportItemIdentity as String] else {
+                  throw LocalhostInstallError.invalidBundledIdentity
+              }
+              return rawIdentity as! SecIdentity
+          '''
+          if old_identity not in s:
+              raise SystemExit('SecIdentity source block not found')
+          s = s.replace(old_identity, new_identity, 1)
+          p.write_text(s)
+          PY
+
       - name: Generate ReyForge app icon
         run: |
           python3 -m venv /tmp/reyforge-icon-venv
