@@ -1,6 +1,6 @@
 name: NFCForge
 options:
-  bundleIdPrefix: com.rvmendillo
+  bundleIdPrefix: app.seaweed4660
   deploymentTarget:
     iOS: '17.0'
 settings:
@@ -14,7 +14,7 @@ targets:
       - NFCForge
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.rvmendillo.nfcforge
+        PRODUCT_BUNDLE_IDENTIFIER: app.seaweed4660.tiger8048
         CODE_SIGN_ENTITLEMENTS: NFCForge/NFCForge.entitlements
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: NFCForge/Info.plist
