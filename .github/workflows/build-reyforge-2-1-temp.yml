@@ -230,18 +230,19 @@ jobs:
           ditto -c -k --sequesterRsrc --keepParent Payload ReyForge-2.6-unsigned.ipa
           unzip -t ReyForge-2.6-unsigned.ipa
           test -f Payload/ReyForge.app/ReyForge
-          if find Payload/ReyForge.app -name '*.gguf' | grep -q .; then
+          if [ -n "$(find Payload/ReyForge.app -name '*.gguf' -print -quit)" ]; then
             echo "Unexpected GGUF bundled"
             exit 1
           fi
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Payload/ReyForge.app/Info.plist)" = "2.6"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' Payload/ReyForge.app/Info.plist)" = "11"
-          strings Payload/ReyForge.app/ReyForge | grep -q 'backloop.dev'
-          strings Payload/ReyForge.app/ReyForge | grep -q 'api.palera.in'
-          strings Payload/ReyForge.app/ReyForge | grep -q 'Open in iTunes'
-          strings Payload/ReyForge.app/ReyForge | grep -q 'itms-services'
-          strings Payload/ReyForge.app/ReyForge | grep -q 'Profile App ID'
-          strings Payload/ReyForge.app/ReyForge | grep -q 'Use Project Name & Bundle ID'
+          strings Payload/ReyForge.app/ReyForge > /tmp/reyforge-strings.txt
+          grep -q 'backloop.dev' /tmp/reyforge-strings.txt
+          grep -q 'api.palera.in' /tmp/reyforge-strings.txt
+          grep -q 'Open in iTunes' /tmp/reyforge-strings.txt
+          grep -q 'itms-services' /tmp/reyforge-strings.txt
+          grep -q 'Profile App ID' /tmp/reyforge-strings.txt
+          grep -q 'Use Project Name & Bundle ID' /tmp/reyforge-strings.txt
           file Payload/ReyForge.app/ReyForge
           du -h ReyForge-2.6-unsigned.ipa
 
