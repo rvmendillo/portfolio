@@ -85,6 +85,7 @@ jobs:
           cp "$PKG/swift/utils.mm" "$PKG/src/utils_bridge.mm"
           cp "$PKG/swift/zsign.hpp" "$PKG/src/include/zsign.hpp"
           cp "$PKG/swift/utils.hpp" "$PKG/src/include/utils.hpp"
+          chmod u+w "$PKG/Package.swift"
           python3 - <<'PY'
           from pathlib import Path
           p = Path('build/SourcePackages/checkouts/Zsign-Package/Package.swift')
