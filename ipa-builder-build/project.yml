@@ -13,7 +13,7 @@ packages:
     from: 2.10549.0
   Zsign:
     url: https://github.com/claration/Zsign-Package.git
-    branch: package
+    revision: 6ffe703df73ef9069adacdbb19d571f11a69a801
 
 settings:
   base:
@@ -42,9 +42,7 @@ targets:
       - package: ZIPFoundation
       - package: LlamaSwift
       - package: Zsign
-        product: Zsign
-      - package: Zsign
-        product: zsignc
+        product: ZsignSwift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.rvmendillo.ipabuilder
@@ -58,6 +56,3 @@ targets:
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        OTHER_LDFLAGS:
-          - "$(inherited)"
-          - "$(BUILT_PRODUCTS_DIR)/ZsignC.o"
