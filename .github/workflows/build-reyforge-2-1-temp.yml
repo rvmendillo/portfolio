@@ -1,4 +1,4 @@
-name: Temporary Build ReyForge 2.4
+name: Temporary Build ReyForge 2.5
 
 on:
   push:
@@ -23,47 +23,76 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
-      - name: Patch localhost installer for Swift 6
+      - name: Prepare trusted backloop.dev TLS identity
         run: |
+          set -euo pipefail
+          curl -fsSL https://backloop.dev/pack.json -o /tmp/backloop.json
+
           python3 - <<'PY'
+          import json
           from pathlib import Path
-          p = Path('ipa-builder-build/LocalhostInstaller.swift')
-          s = p.read_text()
+          from datetime import datetime, timezone
 
-          start = s.index('    private func beginBackgroundTask() {')
-          end = s.index('    private func publishStatus(', start)
-          replacement = '''    private func beginBackgroundTask() {
-              Task { @MainActor [weak self] in
-                  guard let self, self.backgroundTask == .invalid else { return }
-                  self.backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "ReyForgeLocalInstall") { [weak self] in
-                      self?.stopServer()
-                  }
-              }
-          }
+          pack = json.loads(Path('/tmp/backloop.json').read_text())
+          common = pack['info']['domains']['commonName']
+          if common != '*.backloop.dev':
+              raise SystemExit(f'unexpected backloop common name: {common}')
 
-          private func endBackgroundTask() {
-              Task { @MainActor [weak self] in
-                  guard let self else { return }
-                  let task = self.backgroundTask
-                  guard task != .invalid else { return }
-                  self.backgroundTask = .invalid
-                  UIApplication.shared.endBackgroundTask(task)
-              }
-          }
+          expiry = pack['info']['notAfter']
+          expiry_dt = datetime.fromisoformat(expiry.replace('Z', '+00:00'))
+          if (expiry_dt - datetime.now(timezone.utc)).days < 7:
+              raise SystemExit(f'backloop certificate expires too soon: {expiry}')
 
-          '''
-          s = s[:start] + replacement + s[end:]
+          Path('/tmp/backloop.crt').write_text(pack['cert'])
+          Path('/tmp/backloop-ca.crt').write_text(pack['ca'])
+          Path('/tmp/backloop.key').write_text(pack['key1'] + '\n' + pack['key2'] + '\n')
+          Path('/tmp/backloop-expiry.txt').write_text(expiry)
+          PY
 
-          old_cast = 'let identity = items.first?[kSecImportItemIdentity as String] as? SecIdentity else {'
-          new_cast = 'let rawIdentity = items.first?[kSecImportItemIdentity as String] else {'
-          if old_cast not in s:
-              raise SystemExit('SecIdentity cast line not found')
-          s = s.replace(old_cast, new_cast, 1)
-          return_line = '        return identity\n'
-          if return_line not in s:
-              raise SystemExit('SecIdentity return line not found')
-          s = s.replace(return_line, '        return rawIdentity as! SecIdentity\n', 1)
-          p.write_text(s)
+          openssl x509 -in /tmp/backloop.crt -noout -subject -issuer -dates
+          openssl pkey -in /tmp/backloop.key -check -noout
+          openssl pkcs12 -export \
+            -inkey /tmp/backloop.key \
+            -in /tmp/backloop.crt \
+            -certfile /tmp/backloop-ca.crt \
+            -out /tmp/backloop.p12 \
+            -passout pass:reyforge-backloop \
+            -keypbe PBE-SHA1-3DES \
+            -certpbe PBE-SHA1-3DES \
+            -macalg sha1
+
+          python3 - <<'PY'
+          import base64
+          from pathlib import Path
+
+          source = Path('ipa-builder-build/LocalhostInstaller.swift')
+          s = source.read_text()
+
+          enum_old = 'private enum LocalInstallMode {'
+          if enum_old not in s:
+              raise SystemExit('LocalInstallMode marker missing')
+          s = s.replace(enum_old, 'private enum LocalInstallMode: Equatable {', 1)
+
+          guard_old = '''        guard backloopP12Base64 != "__BACKLOOP_P12_BASE64__",
+                    let data = Data(base64Encoded: backloopP12Base64) else {'''
+          guard_new = '''        guard backloopP12Base64.count > 1000,
+                    let data = Data(base64Encoded: backloopP12Base64) else {'''
+          if guard_old not in s:
+              raise SystemExit('backloop identity guard marker missing')
+          s = s.replace(guard_old, guard_new, 1)
+
+          p12_b64 = base64.b64encode(Path('/tmp/backloop.p12').read_bytes()).decode()
+          expiry = Path('/tmp/backloop-expiry.txt').read_text().strip()
+          if s.count('__BACKLOOP_P12_BASE64__') != 1:
+              raise SystemExit('unexpected P12 placeholder count')
+          if s.count('__BACKLOOP_NOT_AFTER__') != 1:
+              raise SystemExit('unexpected expiry placeholder count')
+          s = s.replace('__BACKLOOP_P12_BASE64__', p12_b64, 1)
+          s = s.replace('__BACKLOOP_NOT_AFTER__', expiry, 1)
+
+          if '__BACKLOOP_' in s:
+              raise SystemExit('backloop placeholders remain')
+          source.write_text(s)
           PY
 
       - name: Generate ReyForge app icon
@@ -91,7 +120,7 @@ jobs:
               font = ImageFont.truetype('/System/Library/Fonts/SFNS.ttf', 92)
           except Exception:
               font = ImageFont.load_default()
-          label='2.4'
+          label='2.5'
           box=d.textbbox((0,0),label,font=font)
           d.text(((size-(box[2]-box[0]))/2,800),label,font=font,fill=(238,233,255))
           im.save(out)
@@ -133,7 +162,7 @@ jobs:
           p.write_text(s)
           PY
 
-      - name: Build ReyForge 2.4 unsigned
+      - name: Build ReyForge 2.5 unsigned
         working-directory: ipa-builder-build
         run: |
           set -o pipefail
@@ -155,23 +184,25 @@ jobs:
           rm -rf Payload
           mkdir Payload
           cp -R build/Build/Products/Release-iphoneos/ReyForge.app Payload/
-          ditto -c -k --sequesterRsrc --keepParent Payload ReyForge-2.4-unsigned.ipa
-          unzip -t ReyForge-2.4-unsigned.ipa
+          ditto -c -k --sequesterRsrc --keepParent Payload ReyForge-2.5-unsigned.ipa
+          unzip -t ReyForge-2.5-unsigned.ipa
           test -f Payload/ReyForge.app/ReyForge
           if find Payload/ReyForge.app -name '*.gguf' | grep -q .; then
             echo "Unexpected GGUF bundled"
             exit 1
           fi
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Payload/ReyForge.app/Info.plist)" = "2.4"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' Payload/ReyForge.app/Info.plist)" = "8"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Payload/ReyForge.app/Info.plist)" = "2.5"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' Payload/ReyForge.app/Info.plist)" = "9"
+          strings Payload/ReyForge.app/ReyForge | grep -q 'backloop.dev'
+          strings Payload/ReyForge.app/ReyForge | grep -q 'api.palera.in'
           file Payload/ReyForge.app/ReyForge
-          du -h ReyForge-2.4-unsigned.ipa
+          du -h ReyForge-2.5-unsigned.ipa
 
       - name: Upload ReyForge IPA
         uses: actions/upload-artifact@v4
         with:
-          name: ReyForge-2.4-unsigned-ipa
-          path: ipa-builder-build/ReyForge-2.4-unsigned.ipa
+          name: ReyForge-2.5-unsigned-ipa
+          path: ipa-builder-build/ReyForge-2.5-unsigned.ipa
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
