@@ -30,6 +30,7 @@ targets:
       - path: StudioComponentRenderer.swift
       - path: StudioPanels.swift
       - path: LocalVibeModel.swift
+      - path: LegacyModelCompatibility.swift
       - path: QuickVibe.swift
       - path: PreviewRuntime.swift
       - path: SigningVault.swift
