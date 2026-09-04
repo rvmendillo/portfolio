@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 import Security
 import ZIPFoundation
-import Zsign
+import ZsignSwift
 
 private enum SigningPasswordStore {
     static let service = "com.rvmendillo.reyforge.signing"
@@ -134,8 +134,6 @@ final class BuiltInSigningManager: ObservableObject {
                 values.isExcludedFromBackup = true
                 var mutable = destination
                 try? mutable.setResourceValues(values)
-
-                // The password itself is stored in Keychain on the main actor after import.
                 _ = password
             }.value
 
