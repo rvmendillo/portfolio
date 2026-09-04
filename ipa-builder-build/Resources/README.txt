@@ -1,0 +1,1 @@
+ReyForge bundles SmolLM2-360M-Instruct-Q4_K_M.gguf during the macOS release build. The model is Apache-2.0 licensed and runs locally through llama.cpp / LlamaSwift. No API key is required for Vibe AI.
