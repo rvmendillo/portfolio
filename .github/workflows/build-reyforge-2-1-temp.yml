@@ -71,7 +71,31 @@ jobs:
         run: |
           xcodebuild -resolvePackageDependencies \
             -project IPABuilder.xcodeproj \
-            -scheme IPABuilder
+            -scheme IPABuilder \
+            -derivedDataPath build
+
+      - name: Repair Zsign SwiftPM bridge sources
+        working-directory: ipa-builder-build
+        run: |
+          set -euxo pipefail
+          PKG="build/SourcePackages/checkouts/Zsign-Package"
+          test -f "$PKG/swift/zsign.mm"
+          test -f "$PKG/swift/utils.mm"
+          cp "$PKG/swift/zsign.mm" "$PKG/src/zsign_bridge.mm"
+          cp "$PKG/swift/utils.mm" "$PKG/src/utils_bridge.mm"
+          cp "$PKG/swift/zsign.hpp" "$PKG/src/include/zsign.hpp"
+          cp "$PKG/swift/utils.hpp" "$PKG/src/include/utils.hpp"
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('build/SourcePackages/checkouts/Zsign-Package/Package.swift')
+          s = p.read_text()
+          s = s.replace('"../swift/utils.mm",', '"utils_bridge.mm",')
+          s = s.replace('"../swift/zsign.mm",', '"zsign_bridge.mm",')
+          p.write_text(s)
+          assert '"utils_bridge.mm",' in s
+          assert '"zsign_bridge.mm",' in s
+          PY
+          grep -n "bridge.mm" "$PKG/Package.swift"
 
       - name: Build ReyForge 2.1 unsigned
         working-directory: ipa-builder-build
@@ -83,6 +107,7 @@ jobs:
             -configuration Release \
             -sdk iphoneos \
             -derivedDataPath build \
+            -disableAutomaticPackageResolution \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
