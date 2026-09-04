@@ -1,0 +1,42 @@
+name: Temporary Build Linux Zsign
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/build-zsign-linux-temp.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y git g++ pkg-config libssl-dev libminizip-dev
+
+      - name: Checkout Feather Zsign revision
+        run: |
+          git clone https://github.com/claration/Zsign-Package.git zsign
+          cd zsign
+          git checkout 6ffe703df73ef9069adacdbb19d571f11a69a801
+          test "$(git rev-parse HEAD)" = "6ffe703df73ef9069adacdbb19d571f11a69a801"
+
+      - name: Build Linux CLI
+        working-directory: zsign/build/linux
+        run: make clean && make -j2
+
+      - name: Validate CLI
+        working-directory: zsign/build/linux
+        run: |
+          test -x zsign
+          ./zsign -v || ./zsign -h
+          file zsign
+
+      - name: Upload CLI
+        uses: actions/upload-artifact@v4
+        with:
+          name: zsign-linux-feather
+          path: zsign/build/linux/zsign
+          if-no-files-found: error
+          retention-days: 1
