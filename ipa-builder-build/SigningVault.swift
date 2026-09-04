@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import Security
+import UniformTypeIdentifiers
 import ZIPFoundation
 import ZsignSwift
 
@@ -52,7 +53,8 @@ enum ReyForgeSigningError: LocalizedError {
     case invalidArchive
     case noSigningPair
     case widgetNeedsProfile
-    case signFailed
+    case signFailed(String)
+    case validationFailed(String)
 
     var errorDescription: String? {
         switch self {
@@ -64,8 +66,10 @@ enum ReyForgeSigningError: LocalizedError {
             return "No matching .p12 and .mobileprovision pair was found."
         case .widgetNeedsProfile:
             return "This profile signs the main app only. WidgetKit extensions need a separate provisioning profile. Disable Widget export for this certificate."
-        case .signFailed:
-            return "Local Zsign signing failed."
+        case .signFailed(let detail):
+            return detail.isEmpty ? "Local Zsign signing failed." : "Local Zsign signing failed: \(detail)"
+        case .validationFailed(let detail):
+            return "Signed IPA validation failed: \(detail)"
         }
     }
 }
@@ -75,8 +79,11 @@ final class BuiltInSigningManager: ObservableObject {
     @Published var status = "Checking signing assets…"
     @Published var isSigning = false
     @Published var isImporting = false
+    @Published var isImportingIPA = false
     @Published var signedIPAURL: URL?
+    @Published var importedIPAURL: URL?
     @Published var lastError: String?
+    @Published var diagnostic = ""
 
     let provisionedBundleIdentifier = "app.seaweed4660.tiger8048"
     let profileExpirationText = "March 2027"
@@ -97,6 +104,7 @@ final class BuiltInSigningManager: ObservableObject {
     func importSigningBundle(_ url: URL) async {
         isImporting = true
         lastError = nil
+        diagnostic = "Opening signing bundle"
         status = "Importing signing bundle…"
 
         let scoped = url.startAccessingSecurityScopedResource()
@@ -104,20 +112,19 @@ final class BuiltInSigningManager: ObservableObject {
 
         do {
             let destination = vaultDirectory
-            let password = builtInPassword
             try await Task.detached(priority: .userInitiated) {
                 let fm = FileManager.default
                 let temp = fm.temporaryDirectory.appendingPathComponent("ReyForgeSigningImport-\(UUID().uuidString)", isDirectory: true)
                 try fm.createDirectory(at: temp, withIntermediateDirectories: true)
                 defer { try? fm.removeItem(at: temp) }
 
-                if url.pathExtension.lowercased() == "zip" {
-                    try fm.unzipItem(at: url, to: temp)
-                } else {
+                guard url.pathExtension.lowercased() == "zip" else {
                     throw ReyForgeSigningError.invalidArchive
                 }
+                try fm.unzipItem(at: url, to: temp)
 
-                let files = try fm.contentsOfDirectory(at: temp, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])
+                let enumerator = fm.enumerator(at: temp, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])
+                let files = (enumerator?.allObjects as? [URL]) ?? []
                 let p12 = files.first { $0.pathExtension.lowercased() == "p12" && $0.lastPathComponent.lowercased().contains("distribution") }
                     ?? files.first { $0.pathExtension.lowercased() == "p12" }
                 let provision = files.first { $0.pathExtension.lowercased() == "mobileprovision" && $0.lastPathComponent.lowercased().contains("distribution") }
@@ -129,23 +136,48 @@ final class BuiltInSigningManager: ObservableObject {
                 try fm.createDirectory(at: destination, withIntermediateDirectories: true)
                 try fm.copyItem(at: p12, to: destination.appendingPathComponent("distribution.p12"))
                 try fm.copyItem(at: provision, to: destination.appendingPathComponent("distribution.mobileprovision"))
-
-                var values = URLResourceValues()
-                values.isExcludedFromBackup = true
-                var mutable = destination
-                try? mutable.setResourceValues(values)
-                _ = password
             }.value
 
             try? SigningPasswordStore.save(builtInPassword)
+            diagnostic = "P12 and provisioning profile imported"
             status = "Built-in signer ready"
             objectWillChange.send()
         } catch {
             lastError = error.localizedDescription
+            diagnostic = "Signing bundle import failed"
             status = "Signing import failed"
         }
 
         isImporting = false
+    }
+
+    func importIPA(_ url: URL) async {
+        isImportingIPA = true
+        lastError = nil
+        status = "Importing IPA…"
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+
+        do {
+            let destination = try await Task.detached(priority: .userInitiated) {
+                let fm = FileManager.default
+                let dir = fm.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                    .appendingPathComponent("SigningInputs", isDirectory: true)
+                try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+                let cleanName = url.lastPathComponent.lowercased().hasSuffix(".ipa") ? url.lastPathComponent : "Imported.ipa"
+                let target = dir.appendingPathComponent(cleanName)
+                try? fm.removeItem(at: target)
+                try fm.copyItem(at: url, to: target)
+                return target
+            }.value
+            importedIPAURL = destination
+            diagnostic = "Imported \(destination.lastPathComponent)"
+            status = "IPA ready to sign"
+        } catch {
+            lastError = error.localizedDescription
+            status = "IPA import failed"
+        }
+        isImportingIPA = false
     }
 
     func sign(ipaURL: URL, widgetEnabled: Bool) async {
@@ -161,6 +193,7 @@ final class BuiltInSigningManager: ObservableObject {
         isSigning = true
         signedIPAURL = nil
         lastError = nil
+        diagnostic = "Preparing \(ipaURL.lastPathComponent)"
         status = "Signing IPA on device…"
 
         do {
@@ -178,9 +211,11 @@ final class BuiltInSigningManager: ObservableObject {
                 )
             }.value
             signedIPAURL = output
+            diagnostic = "Signature, App ID, and embedded profile verified"
             status = "Signed IPA ready"
         } catch {
             lastError = error.localizedDescription
+            diagnostic = "Runtime signer returned an error"
             status = "Signing failed"
         }
 
@@ -229,6 +264,10 @@ final class BuiltInSigningManager: ObservableObject {
         bundleIdentifier: String
     ) throws -> URL {
         let fm = FileManager.default
+        guard fm.fileExists(atPath: ipaURL.path), fm.fileExists(atPath: p12URL.path), fm.fileExists(atPath: provisionURL.path) else {
+            throw ReyForgeSigningError.signingAssetsMissing
+        }
+
         let root = fm.temporaryDirectory.appendingPathComponent("ReyForgeSign-\(UUID().uuidString)", isDirectory: true)
         let extract = root.appendingPathComponent("Extracted", isDirectory: true)
         try fm.createDirectory(at: extract, withIntermediateDirectories: true)
@@ -237,17 +276,24 @@ final class BuiltInSigningManager: ObservableObject {
         try fm.unzipItem(at: ipaURL, to: extract)
         let payload = extract.appendingPathComponent("Payload", isDirectory: true)
         let payloadItems = try fm.contentsOfDirectory(at: payload, includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles])
-        guard let appURL = payloadItems.first(where: { $0.pathExtension == "app" }) else {
+        guard let appURL = payloadItems.first(where: { $0.pathExtension.lowercased() == "app" }) else {
             throw ReyForgeSigningError.invalidArchive
         }
 
         let plugins = appURL.appendingPathComponent("PlugIns", isDirectory: true)
         if let pluginItems = try? fm.contentsOfDirectory(at: plugins, includingPropertiesForKeys: nil),
-           pluginItems.contains(where: { $0.pathExtension == "appex" }) {
+           pluginItems.contains(where: { $0.pathExtension.lowercased() == "appex" }) {
             throw ReyForgeSigningError.widgetNeedsProfile
         }
 
-        let signed = Zsign.sign(
+        // Put the profile in place before signing so it is part of the final signed bundle.
+        let embeddedProvision = appURL.appendingPathComponent("embedded.mobileprovision")
+        try? fm.removeItem(at: embeddedProvision)
+        try fm.copyItem(at: provisionURL, to: embeddedProvision)
+
+        var callbackSucceeded: Bool?
+        var callbackErrorText = ""
+        let returned = Zsign.sign(
             appPath: appURL.path,
             provisionPath: provisionURL.path,
             p12Path: p12URL.path,
@@ -257,9 +303,35 @@ final class BuiltInSigningManager: ObservableObject {
             customName: "",
             customVersion: "",
             adhoc: false,
-            removeProvision: false
+            removeProvision: false,
+            completion: { success, error in
+                callbackSucceeded = success
+                callbackErrorText = error?.localizedDescription ?? ""
+            }
         )
-        guard signed else { throw ReyForgeSigningError.signFailed }
+
+        guard returned, callbackSucceeded != false else {
+            throw ReyForgeSigningError.signFailed(callbackErrorText)
+        }
+
+        guard fm.fileExists(atPath: embeddedProvision.path) else {
+            throw ReyForgeSigningError.validationFailed("embedded.mobileprovision is missing")
+        }
+
+        let infoURL = appURL.appendingPathComponent("Info.plist")
+        guard let info = NSDictionary(contentsOf: infoURL),
+              let actualIdentifier = info["CFBundleIdentifier"] as? String,
+              actualIdentifier == bundleIdentifier else {
+            throw ReyForgeSigningError.validationFailed("bundle identifier was not changed to the provisioning profile App ID")
+        }
+
+        guard let executable = info["CFBundleExecutable"] as? String, !executable.isEmpty else {
+            throw ReyForgeSigningError.validationFailed("CFBundleExecutable is missing")
+        }
+        let executableURL = appURL.appendingPathComponent(executable)
+        guard fm.fileExists(atPath: executableURL.path), Zsign.checkSigned(appExecutable: executableURL.path) else {
+            throw ReyForgeSigningError.validationFailed("main executable signature check failed")
+        }
 
         let builds = fm.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("SignedBuilds", isDirectory: true)
@@ -268,6 +340,10 @@ final class BuiltInSigningManager: ObservableObject {
         let output = builds.appendingPathComponent("\(base)-signed.ipa")
         try? fm.removeItem(at: output)
         try fm.zipItem(at: payload, to: output, shouldKeepParent: true, compressionMethod: .deflate)
+
+        guard fm.fileExists(atPath: output.path) else {
+            throw ReyForgeSigningError.validationFailed("signed IPA was not written")
+        }
         return output
     }
 }
@@ -276,7 +352,16 @@ struct ReyForgeSigningPanel: View {
     @EnvironmentObject private var store: StudioStore
     @EnvironmentObject private var github: GitHubBuildManager
     @EnvironmentObject private var signer: BuiltInSigningManager
-    @State private var importing = false
+    @State private var importingBundle = false
+    @State private var importingIPA = false
+
+    private var selectedIPA: URL? {
+        signer.importedIPAURL ?? github.ipaURL
+    }
+
+    private var ipaType: UTType {
+        UTType(filenameExtension: "ipa") ?? .data
+    }
 
     var body: some View {
         Form {
@@ -287,10 +372,23 @@ struct ReyForgeSigningPanel: View {
 
                 if !signer.isConfigured {
                     Button {
-                        importing = true
+                        importingBundle = true
                     } label: {
                         Label("Import Signing ZIP", systemImage: "lock.doc")
                     }
+                }
+
+                Button {
+                    importingIPA = true
+                } label: {
+                    Label(signer.isImportingIPA ? "Importing IPA…" : "Import IPA to Sign", systemImage: "square.and.arrow.down")
+                }
+                .disabled(signer.isImportingIPA || signer.isSigning)
+
+                if !signer.diagnostic.isEmpty {
+                    Text(signer.diagnostic)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
 
                 if let error = signer.lastError {
@@ -299,16 +397,17 @@ struct ReyForgeSigningPanel: View {
             }
 
             Section("Build & sign") {
-                if let ipa = github.ipaURL {
-                    LabeledContent("Unsigned", value: ipa.lastPathComponent)
+                if let ipa = selectedIPA {
+                    LabeledContent(signer.importedIPAURL == nil ? "Generated IPA" : "Imported IPA", value: ipa.lastPathComponent)
                     Button {
-                        Task { await signer.sign(ipaURL: ipa, widgetEnabled: store.selected?.widget.enabled ?? false) }
+                        let hasWidget = signer.importedIPAURL == nil ? (store.selected?.widget.enabled ?? false) : false
+                        Task { await signer.sign(ipaURL: ipa, widgetEnabled: hasWidget) }
                     } label: {
                         Label(signer.isSigning ? "Signing…" : "Sign IPA Locally", systemImage: "signature")
                     }
                     .disabled(signer.isSigning)
                 } else {
-                    Text("Build an IPA first. ReyForge will sign it locally after GitHub returns the unsigned build.")
+                    Text("Import an IPA above, or build one in ReyForge first.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -321,7 +420,13 @@ struct ReyForgeSigningPanel: View {
                 }
             }
 
-            if store.selected?.widget.enabled == true {
+            Section("Current profile limitation") {
+                Text("This provisioning profile has one explicit App ID. Every IPA signed with it becomes \(signer.provisionedBundleIdentifier), so installing another signed app can replace ReyForge. A wildcard profile or another App ID/profile is required for separate installed apps.")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+
+            if store.selected?.widget.enabled == true && signer.importedIPAURL == nil {
                 Section("Widget signing") {
                     Label("A WidgetKit extension needs its own provisioning profile.", systemImage: "exclamationmark.triangle")
                         .foregroundStyle(.orange)
@@ -330,9 +435,14 @@ struct ReyForgeSigningPanel: View {
                 }
             }
         }
-        .fileImporter(isPresented: $importing, allowedContentTypes: [.zip]) { result in
+        .fileImporter(isPresented: $importingBundle, allowedContentTypes: [.zip]) { result in
             if case .success(let url) = result {
                 Task { await signer.importSigningBundle(url) }
+            }
+        }
+        .fileImporter(isPresented: $importingIPA, allowedContentTypes: [ipaType]) { result in
+            if case .success(let url) = result {
+                Task { await signer.importIPA(url) }
             }
         }
     }
