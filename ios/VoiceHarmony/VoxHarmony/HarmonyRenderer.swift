@@ -25,19 +25,9 @@ struct HarmonyRenderer {
 
         let engine = AVAudioEngine()
         let submix = AVAudioMixerNode()
-        let compressor = AVAudioUnitDynamicsProcessor()
         engine.attach(submix)
-        engine.attach(compressor)
-
-        compressor.threshold = -10
-        compressor.headRoom = 5
-        compressor.expansionRatio = 1
-        compressor.attackTime = 0.006
-        compressor.releaseTime = 0.12
-        compressor.masterGain = -1
-
-        engine.connect(submix, to: compressor, format: renderFormat)
-        engine.connect(compressor, to: engine.mainMixerNode, format: renderFormat)
+        engine.connect(submix, to: engine.mainMixerNode, format: renderFormat)
+        engine.mainMixerNode.outputVolume = 0.72
 
         var players: [AVAudioPlayerNode] = []
         var pitchUnits: [AVAudioUnitTimePitch] = []
