@@ -41,6 +41,45 @@ jobs:
             echo "PROJECT_DIR=$RUNNER_TEMP/NFCForgeExtract/NFCForge" >> "$GITHUB_ENV"
           fi
 
+      - name: Apply Xcode 16.4 compatibility patch
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          root = Path(os.environ['PROJECT_DIR']) / 'NFCForge' / 'Services'
+
+          codec = root / 'NDEFCodec.swift'
+          text = codec.read_text()
+          old = '''        if let (text, locale) = payload.wellKnownTypeTextPayload(), let text {
+              return .init(kind: .text, value: text, auxiliary: locale?.identifier ?? "")
+          }'''
+          new = '''        let (text, locale) = payload.wellKnownTypeTextPayload()
+          if let text {
+              return .init(kind: .text, value: text, auxiliary: locale?.identifier ?? "")
+          }'''
+          if old in text:
+              text = text.replace(old, new)
+          codec.write_text(text)
+
+          service = root / 'NFCService.swift'
+          text = service.read_text()
+          old = '''        let session = NFCTagReaderSession(pollingOption: [.iso14443, .iso15693, .iso18092], delegate: self, queue: nil)
+          session.alertMessage = "Hold your iPhone near a tag to inspect its protocol and identifier."
+          tagSession = session
+          session.begin()'''
+          new = '''        guard let session = NFCTagReaderSession(pollingOption: [.iso14443, .iso15693, .iso18092], delegate: self, queue: nil) else {
+              errorMessage = "Unable to start the NFC tag reader session."
+              isScanning = false
+              return
+          }
+          session.alertMessage = "Hold your iPhone near a tag to inspect its protocol and identifier."
+          tagSession = session
+          session.begin()'''
+          if old in text:
+              text = text.replace(old, new)
+          service.write_text(text)
+          PY
+
       - name: Install XcodeGen
         run: |
           if ! command -v xcodegen >/dev/null 2>&1; then
