@@ -81,6 +81,26 @@ jobs:
           grep -q '"zsign.mm"' build/SourcePackages/checkouts/Zsign-Package/Package.swift
           grep -q 'name: "ZsignSwift"' build/SourcePackages/checkouts/Zsign-Package/Package.swift
 
+      - name: Patch Zsign provisioning and callback behavior
+        working-directory: ipa-builder-build
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('build/SourcePackages/checkouts/Zsign-Package/src/zsign.mm')
+          s = p.read_text()
+          old_call = 'bForce, bWeakInject, bEnableCache, excludeprovion);'
+          new_call = 'bForce, bWeakInject, bEnableCache, !excludeprovion);'
+          assert old_call in s
+          s = s.replace(old_call, new_call, 1)
+          old_cb = 'completionHandler(bRet, signError);'
+          new_cb = 'if (completionHandler) { completionHandler(bRet, signError); }'
+          assert old_cb in s
+          s = s.replace(old_cb, new_cb, 1)
+          p.write_text(s)
+          PY
+          grep -q '!excludeprovion' build/SourcePackages/checkouts/Zsign-Package/src/zsign.mm
+          grep -q 'if (completionHandler)' build/SourcePackages/checkouts/Zsign-Package/src/zsign.mm
+
       - name: Build ReyForge 2.1 unsigned
         working-directory: ipa-builder-build
         run: |
