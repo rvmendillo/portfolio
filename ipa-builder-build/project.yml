@@ -8,6 +8,9 @@ packages:
   ZIPFoundation:
     url: https://github.com/weichsel/ZIPFoundation.git
     from: 0.9.19
+  LlamaSwift:
+    url: https://github.com/mattt/llama.swift
+    from: 2.10549.0
 
 settings:
   base:
@@ -19,19 +22,27 @@ targets:
     platform: iOS
     sources:
       - path: App.swift
-      - path: WorkspaceView.swift
+      - path: StudioModels.swift
+      - path: Studio2View.swift
+      - path: StudioFixes.swift
+      - path: LocalVibeModel.swift
       - path: GitHubBuildManager.swift
+      - path: Resources
+        buildPhase: resources
+      - path: Assets.xcassets
     dependencies:
       - package: ZIPFoundation
+      - package: LlamaSwift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.rvmendillo.ipabuilder
-        PRODUCT_NAME: IPABuilder
-        MARKETING_VERSION: "1.1"
-        CURRENT_PROJECT_VERSION: "2"
+        PRODUCT_NAME: ReyForge
+        MARKETING_VERSION: "2.0"
+        CURRENT_PROJECT_VERSION: "3"
         TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: "IPA Builder"
+        INFOPLIST_KEY_CFBundleDisplayName: "ReyForge"
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
