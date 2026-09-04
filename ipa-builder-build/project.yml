@@ -45,13 +45,13 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.rvmendillo.ipabuilder
         PRODUCT_NAME: ReyForge
-        MARKETING_VERSION: "2.4"
-        CURRENT_PROJECT_VERSION: "8"
+        MARKETING_VERSION: "2.5"
+        CURRENT_PROJECT_VERSION: "9"
         TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: "ReyForge"
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
-        INFOPLIST_KEY_NSLocalNetworkUsageDescription: "ReyForge uses a short-lived localhost HTTPS server to deliver a signed IPA to the iOS installer."
+        INFOPLIST_KEY_NSLocalNetworkUsageDescription: "ReyForge uses a short-lived localhost server to deliver a signed IPA directly to the iOS installer."
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
