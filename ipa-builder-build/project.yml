@@ -27,6 +27,7 @@ targets:
       - path: StudioComponentRenderer.swift
       - path: StudioPanels.swift
       - path: AppleScreenPlanner.swift
+      - path: LegacyModelCompatibility.swift
       - path: QuickVibe.swift
       - path: PreviewRuntime.swift
       - path: SigningVault.swift
