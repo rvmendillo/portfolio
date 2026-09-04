@@ -32,8 +32,9 @@ jobs:
 
       - name: Generate ReyForge app icon
         run: |
-          python3 -m pip install --quiet pillow
-          python3 - <<'PY'
+          python3 -m venv /tmp/reyforge-icon-venv
+          /tmp/reyforge-icon-venv/bin/python -m pip install --quiet pillow
+          /tmp/reyforge-icon-venv/bin/python - <<'PY'
           from PIL import Image, ImageDraw, ImageFont
           from pathlib import Path
           out = Path('ipa-builder-build/Assets.xcassets/AppIcon.appiconset/AppIcon.png')
