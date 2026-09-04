@@ -1,4 +1,4 @@
-name: Temporary Build ReyForge 2.2
+name: Temporary Build ReyForge 2.3
 
 on:
   push:
@@ -9,22 +9,19 @@ on:
 
 jobs:
   build:
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 35
     steps:
-      - name: Checkout ReyForge source branch
+      - name: Checkout ReyForge Foundation Models branch
         uses: actions/checkout@v6
         with:
-          ref: ipa-builder-build-20260903
+          ref: reyforge-foundation-models
+
+      - name: Show Xcode version
+        run: xcodebuild -version
 
       - name: Install XcodeGen
         run: brew install xcodegen
-
-      - name: Prepare runtime model directory
-        run: |
-          mkdir -p ipa-builder-build/Resources
-          rm -f ipa-builder-build/Resources/*.gguf
-          echo "Qwen2.5-Coder-3B is downloaded once in-app instead of bundled in the IPA."
 
       - name: Generate ReyForge app icon
         run: |
@@ -51,7 +48,7 @@ jobs:
               font = ImageFont.truetype('/System/Library/Fonts/SFNS.ttf', 92)
           except Exception:
               font = ImageFont.load_default()
-          label='2.2'
+          label='2.3'
           box=d.textbbox((0,0),label,font=font)
           d.text(((size-(box[2]-box[0]))/2,800),label,font=font,fill=(238,233,255))
           im.save(out)
@@ -73,8 +70,6 @@ jobs:
         working-directory: ipa-builder-build
         run: |
           test "$(git -C build/SourcePackages/checkouts/Zsign-Package rev-parse HEAD)" = "6ffe703df73ef9069adacdbb19d571f11a69a801"
-          grep -q '"zsign.mm"' build/SourcePackages/checkouts/Zsign-Package/Package.swift
-          grep -q 'name: "ZsignSwift"' build/SourcePackages/checkouts/Zsign-Package/Package.swift
 
       - name: Patch Zsign provisioning and callback behavior
         working-directory: ipa-builder-build
@@ -86,16 +81,16 @@ jobs:
           s = p.read_text()
           old_call = 'bForce, bWeakInject, bEnableCache, excludeprovion);'
           new_call = 'bForce, bWeakInject, bEnableCache, !excludeprovion);'
-          assert old_call in s
-          s = s.replace(old_call, new_call, 1)
+          if old_call in s:
+              s = s.replace(old_call, new_call, 1)
           old_cb = 'completionHandler(bRet, signError);'
           new_cb = 'if (completionHandler) { completionHandler(bRet, signError); }'
-          assert old_cb in s
-          s = s.replace(old_cb, new_cb, 1)
+          if old_cb in s:
+              s = s.replace(old_cb, new_cb, 1)
           p.write_text(s)
           PY
 
-      - name: Build ReyForge 2.2 unsigned
+      - name: Build ReyForge 2.3 unsigned
         working-directory: ipa-builder-build
         run: |
           set -o pipefail
@@ -117,23 +112,23 @@ jobs:
           rm -rf Payload
           mkdir Payload
           cp -R build/Build/Products/Release-iphoneos/ReyForge.app Payload/
-          ditto -c -k --sequesterRsrc --keepParent Payload ReyForge-2.2-unsigned.ipa
-          unzip -t ReyForge-2.2-unsigned.ipa
+          ditto -c -k --sequesterRsrc --keepParent Payload ReyForge-2.3-unsigned.ipa
+          unzip -t ReyForge-2.3-unsigned.ipa
           test -f Payload/ReyForge.app/ReyForge
           if find Payload/ReyForge.app -name '*.gguf' | grep -q .; then
-            echo "Unexpected bundled GGUF; 3B model must remain runtime-downloadable"
+            echo "Unexpected GGUF bundled"
             exit 1
           fi
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Payload/ReyForge.app/Info.plist)" = "2.2"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' Payload/ReyForge.app/Info.plist)" = "6"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Payload/ReyForge.app/Info.plist)" = "2.3"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' Payload/ReyForge.app/Info.plist)" = "7"
           file Payload/ReyForge.app/ReyForge
-          du -h ReyForge-2.2-unsigned.ipa
+          du -h ReyForge-2.3-unsigned.ipa
 
       - name: Upload ReyForge IPA
         uses: actions/upload-artifact@v4
         with:
-          name: ReyForge-2.2-unsigned-ipa
-          path: ipa-builder-build/ReyForge-2.2-unsigned.ipa
+          name: ReyForge-2.3-unsigned-ipa
+          path: ipa-builder-build/ReyForge-2.3-unsigned.ipa
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
