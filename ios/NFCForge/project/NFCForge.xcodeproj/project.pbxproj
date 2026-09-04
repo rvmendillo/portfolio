@@ -173,7 +173,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.rvmendillo.nfcforge;
+				PRODUCT_BUNDLE_IDENTIFIER = app.seaweed4660.tiger8048;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -191,7 +191,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.rvmendillo.nfcforge;
+				PRODUCT_BUNDLE_IDENTIFIER = app.seaweed4660.tiger8048;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
