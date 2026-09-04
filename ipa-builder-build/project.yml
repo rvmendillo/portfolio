@@ -11,6 +11,9 @@ packages:
   LlamaSwift:
     url: https://github.com/mattt/llama.swift
     from: 2.10549.0
+  Zsign:
+    url: https://github.com/claration/Zsign-Package.git
+    branch: package
 
 settings:
   base:
@@ -27,6 +30,10 @@ targets:
       - path: StudioComponentRenderer.swift
       - path: StudioPanels.swift
       - path: LocalVibeModel.swift
+      - path: QuickVibe.swift
+      - path: PreviewRuntime.swift
+      - path: SigningVault.swift
+      - path: ReyForgeRootV21.swift
       - path: GitHubBuildManager.swift
       - path: Resources
         buildPhase: resources
@@ -34,12 +41,13 @@ targets:
     dependencies:
       - package: ZIPFoundation
       - package: LlamaSwift
+      - package: Zsign
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.rvmendillo.ipabuilder
         PRODUCT_NAME: ReyForge
-        MARKETING_VERSION: "2.0"
-        CURRENT_PROJECT_VERSION: "3"
+        MARKETING_VERSION: "2.1"
+        CURRENT_PROJECT_VERSION: "4"
         TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: "ReyForge"
