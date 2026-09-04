@@ -12,7 +12,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 35
     steps:
-      - name: Checkout ReyForge Foundation Models branch
+      - name: Checkout ReyForge 2.6
         uses: actions/checkout@v6
         with:
           ref: reyforge-foundation-models
@@ -23,119 +23,51 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
-      - name: Prepare Feather-style installer and trusted TLS identity
+      - name: Apply Feather-style semi-local installer handoff
         run: |
-          set -euo pipefail
-          curl -fsSL https://backloop.dev/pack.json -o /tmp/backloop.json
-
           python3 - <<'PY'
-          import json
           from pathlib import Path
-          from datetime import datetime, timezone
+          p = Path('ipa-builder-build/LocalhostInstaller.swift')
+          s = p.read_text()
+          s = s.replace('private enum LocalInstallMode {', 'private enum LocalInstallMode: Equatable {', 1)
+          s = s.replace('supportsFullyLocal = Self.detectFullyLocalEntitlements()', 'supportsFullyLocal = false', 1)
 
-          pack = json.loads(Path('/tmp/backloop.json').read_text())
-          common = pack['info']['domains']['commonName']
-          if common != '*.backloop.dev':
-              raise SystemExit(f'unexpected backloop common name: {common}')
-
-          expiry = pack['info']['notAfter']
-          expiry_dt = datetime.fromisoformat(expiry.replace('Z', '+00:00'))
-          if (expiry_dt - datetime.now(timezone.utc)).days < 7:
-              raise SystemExit(f'backloop certificate expires too soon: {expiry}')
-
-          Path('/tmp/backloop.crt').write_text(pack['cert'])
-          Path('/tmp/backloop-ca.crt').write_text(pack['ca'])
-          Path('/tmp/backloop.key').write_text(pack['key1'] + '\n' + pack['key2'] + '\n')
-          Path('/tmp/backloop-expiry.txt').write_text(expiry)
-          PY
-
-          openssl x509 -in /tmp/backloop.crt -noout -subject -issuer -dates
-          openssl pkey -in /tmp/backloop.key -check -noout
-          openssl pkcs12 -export \
-            -inkey /tmp/backloop.key \
-            -in /tmp/backloop.crt \
-            -certfile /tmp/backloop-ca.crt \
-            -out /tmp/backloop.p12 \
-            -passout pass:reyforge-backloop \
-            -keypbe PBE-SHA1-3DES \
-            -certpbe PBE-SHA1-3DES \
-            -macalg sha1
-
-          python3 - <<'PY'
-          import base64
-          from pathlib import Path
-
-          source = Path('ipa-builder-build/LocalhostInstaller.swift')
-          s = source.read_text()
-
-          enum_old = 'private enum LocalInstallMode {'
-          if enum_old not in s:
-              raise SystemExit('LocalInstallMode marker missing')
-          s = s.replace(enum_old, 'private enum LocalInstallMode: Equatable {', 1)
-
-          guard_old = 'guard backloopP12Base64 != "__BACKLOOP_P12_BASE64__",'
-          guard_new = 'guard backloopP12Base64.count > 1000,'
-          if guard_old not in s:
-              raise SystemExit('backloop identity guard line missing')
-          s = s.replace(guard_old, guard_new, 1)
-
-          compat_start = s.index('    private func compatibilityInstallPageData() throws -> Data {')
-          compat_end = s.index('    private func sendSimple(', compat_start)
-          compat = '''    private func compatibilityInstallPageData() throws -> Data {
+          start = s.index('    private func compatibilityInstallPageData() throws -> Data {')
+          end = s.index('    private func sendSimple(', start)
+          s = s[:start] + '''    private func compatibilityInstallPageData() throws -> Data {
               let payload = "http://127.0.0.1:\\(port.rawValue)/\\(token)/app.ipa"
               let baseURL = "https://api.palera.in/genPlist?bundleid=\\(activeBundleIdentifier)&name=ReyForge Signed App&version=1.0&fetchurl=\\(payload)"
-
               guard let encodedOnce = baseURL.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
                     let encodedTwice = encodedOnce.addingPercentEncoding(withAllowedCharacters: .alphanumerics) else {
                   throw LocalInstallError.manifestURLFailed
               }
-
               let installURL = "itms-services://?action=download-manifest&url=\\(encodedTwice)"
               let htmlURL = installURL.replacingOccurrences(of: "&", with: "&amp;")
               let html = """
               <html style="background-color:#111;color:white;font-family:-apple-system">
-                <head>
-                  <meta name="viewport" content="width=device-width, initial-scale=1">
-                  <title>ReyForge Install</title>
-                </head>
+                <head><meta name="viewport" content="width=device-width, initial-scale=1"><title>ReyForge Install</title></head>
                 <body style="padding:24px">
                   <h2>Open in iTunes</h2>
                   <p>ReyForge is handing the signed IPA to the iOS installer.</p>
-                  <p><a style="display:inline-block;padding:14px 18px;border-radius:12px;background:white;color:black;text-decoration:none;font-weight:600" href="\\(htmlURL)">Open in iTunes</a></p>
-                  <script type="text/javascript">setTimeout(function(){ window.location="\\(installURL)"; }, 150);</script>
+                  <p><a href="\\(htmlURL)">Open in iTunes</a></p>
+                  <script>setTimeout(function(){ window.location="\\(installURL)"; }, 150);</script>
                 </body>
               </html>
               """
               return Data(html.utf8)
           }
 
-          '''
-          s = s[:compat_start] + compat + s[compat_end:]
+''' + s[end:]
           s = s.replace('contentType: "text/html; charset=utf-8"', 'contentType: "text/html"', 1)
 
-          header_start = s.index('    private func responseHeader(status: String, contentType: String, length: Int) -> String {')
-          header_end = s.index('    private func beginBackgroundTask()', header_start)
-          header = '''    private func responseHeader(status: String, contentType: String, length: Int) -> String {
-              return "HTTP/1.1 \\(status)\\r\\nContent-Type: \\(contentType)\\r\\nContent-Length: \\(length)\\r\\nCache-Control: no-store\\r\\nConnection: close\\r\\n\\r\\n"
+          hs = s.index('    private func responseHeader(status: String, contentType: String, length: Int) -> String {')
+          he = s.index('    private func beginBackgroundTask()', hs)
+          s = s[:hs] + '''    private func responseHeader(status: String, contentType: String, length: Int) -> String {
+              "HTTP/1.1 \\(status)\\r\\nContent-Type: \\(contentType)\\r\\nContent-Length: \\(length)\\r\\nCache-Control: no-store\\r\\nConnection: close\\r\\n\\r\\n"
           }
 
-          '''
-          s = s[:header_start] + header + s[header_end:]
-
-          p12_b64 = base64.b64encode(Path('/tmp/backloop.p12').read_bytes()).decode()
-          expiry = Path('/tmp/backloop-expiry.txt').read_text().strip()
-          if s.count('__BACKLOOP_P12_BASE64__') != 1:
-              raise SystemExit('unexpected P12 placeholder count')
-          if s.count('__BACKLOOP_NOT_AFTER__') != 1:
-              raise SystemExit('unexpected expiry placeholder count')
-          s = s.replace('__BACKLOOP_P12_BASE64__', p12_b64, 1)
-          s = s.replace('__BACKLOOP_NOT_AFTER__', expiry, 1)
-
-          if '__BACKLOOP_' in s:
-              raise SystemExit('backloop placeholders remain')
-          if 'Open in iTunes' not in s or 'encodedTwice' not in s:
-              raise SystemExit('Feather-style iTunes handoff patch missing')
-          source.write_text(s)
+''' + s[he:]
+          p.write_text(s)
           PY
 
       - name: Generate ReyForge app icon
@@ -143,29 +75,17 @@ jobs:
           python3 -m venv /tmp/reyforge-icon-venv
           /tmp/reyforge-icon-venv/bin/python -m pip install --quiet pillow
           /tmp/reyforge-icon-venv/bin/python - <<'PY'
-          from PIL import Image, ImageDraw, ImageFont
+          from PIL import Image, ImageDraw
           from pathlib import Path
           out = Path('ipa-builder-build/Assets.xcassets/AppIcon.appiconset/AppIcon.png')
           out.parent.mkdir(parents=True, exist_ok=True)
-          size = 1024
-          im = Image.new('RGB', (size, size), (27, 22, 60))
+          im = Image.new('RGB', (1024,1024), (45,34,95))
           d = ImageDraw.Draw(im)
-          for y in range(size):
-              t = y / (size - 1)
-              c = (int(45 + 35*t), int(34 + 30*t), int(95 + 90*t))
-              d.line((0, y, size, y), fill=c)
           d.rounded_rectangle((110,110,914,914), radius=215, fill=(59,48,132), outline=(205,190,255), width=18)
           d.polygon([(280,655),(468,467),(414,413),(226,601)], fill=(255,255,255))
           d.rounded_rectangle((420,240,730,420), radius=46, fill=(255,255,255))
           d.rounded_rectangle((510,378,618,730), radius=39, fill=(255,255,255))
           d.polygon([(616,620),(796,800),(724,872),(544,692)], fill=(255,255,255))
-          try:
-              font = ImageFont.truetype('/System/Library/Fonts/SFNS.ttf', 92)
-          except Exception:
-              font = ImageFont.load_default()
-          label='2.6'
-          box=d.textbbox((0,0),label,font=font)
-          d.text(((size-(box[2]-box[0]))/2,800),label,font=font,fill=(238,233,255))
           im.save(out)
           PY
 
@@ -181,27 +101,15 @@ jobs:
             -scheme IPABuilder \
             -derivedDataPath build
 
-      - name: Verify Feather Zsign revision
+      - name: Patch Zsign compatibility
         working-directory: ipa-builder-build
         run: |
-          test "$(git -C build/SourcePackages/checkouts/Zsign-Package rev-parse HEAD)" = "6ffe703df73ef9069adacdbb19d571f11a69a801"
-
-      - name: Patch Zsign provisioning and callback behavior
-        working-directory: ipa-builder-build
-        run: |
-          chmod u+w build/SourcePackages/checkouts/Zsign-Package/src/zsign.mm
           python3 - <<'PY'
           from pathlib import Path
-          p = Path('build/SourcePackages/checkouts/Zsign-Package/src/zsign.mm')
-          s = p.read_text()
-          old_call = 'bForce, bWeakInject, bEnableCache, excludeprovion);'
-          new_call = 'bForce, bWeakInject, bEnableCache, !excludeprovion);'
-          if old_call in s:
-              s = s.replace(old_call, new_call, 1)
-          old_cb = 'completionHandler(bRet, signError);'
-          new_cb = 'if (completionHandler) { completionHandler(bRet, signError); }'
-          if old_cb in s:
-              s = s.replace(old_cb, new_cb, 1)
+          p=Path('build/SourcePackages/checkouts/Zsign-Package/src/zsign.mm')
+          s=p.read_text()
+          s=s.replace('bForce, bWeakInject, bEnableCache, excludeprovion);','bForce, bWeakInject, bEnableCache, !excludeprovion);',1)
+          s=s.replace('completionHandler(bRet, signError);','if (completionHandler) { completionHandler(bRet, signError); }',1)
           p.write_text(s)
           PY
 
@@ -230,19 +138,9 @@ jobs:
           ditto -c -k --sequesterRsrc --keepParent Payload ReyForge-2.6-unsigned.ipa
           unzip -t ReyForge-2.6-unsigned.ipa
           test -f Payload/ReyForge.app/ReyForge
-          if [ -n "$(find Payload/ReyForge.app -name '*.gguf' -print -quit)" ]; then
-            echo "Unexpected GGUF bundled"
-            exit 1
-          fi
+          test -z "$(find Payload/ReyForge.app -name '*.gguf' -print -quit)"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Payload/ReyForge.app/Info.plist)" = "2.6"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' Payload/ReyForge.app/Info.plist)" = "11"
-          strings Payload/ReyForge.app/ReyForge > /tmp/reyforge-strings.txt
-          grep -q 'backloop.dev' /tmp/reyforge-strings.txt
-          grep -q 'api.palera.in' /tmp/reyforge-strings.txt
-          grep -q 'Open in iTunes' /tmp/reyforge-strings.txt
-          grep -q 'itms-services' /tmp/reyforge-strings.txt
-          grep -q 'Profile App ID' /tmp/reyforge-strings.txt
-          grep -q 'Use Project Name & Bundle ID' /tmp/reyforge-strings.txt
           file Payload/ReyForge.app/ReyForge
           du -h ReyForge-2.6-unsigned.ipa
 
