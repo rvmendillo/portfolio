@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - ".github/workflows/build-reyforge-2-1-temp.yml"
+      - .github/workflows/build-reyforge-2-1-temp.yml
   workflow_dispatch:
 
 jobs:
@@ -20,74 +20,17 @@ jobs:
       - name: Show Xcode version
         run: xcodebuild -version
 
-      - name: Install XcodeGen
-        run: brew install xcodegen
-
-      - name: Apply Feather-style semi-local installer handoff
+      - name: Install build tools
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('ipa-builder-build/LocalhostInstaller.swift')
-          s = p.read_text()
-          s = s.replace('private enum LocalInstallMode {', 'private enum LocalInstallMode: Equatable {', 1)
-          s = s.replace('supportsFullyLocal = Self.detectFullyLocalEntitlements()', 'supportsFullyLocal = false', 1)
-
-          start = s.index('    private func compatibilityInstallPageData() throws -> Data {')
-          end = s.index('    private func sendSimple(', start)
-          s = s[:start] + '''    private func compatibilityInstallPageData() throws -> Data {
-              let payload = "http://127.0.0.1:\\(port.rawValue)/\\(token)/app.ipa"
-              let baseURL = "https://api.palera.in/genPlist?bundleid=\\(activeBundleIdentifier)&name=ReyForge Signed App&version=1.0&fetchurl=\\(payload)"
-              guard let encodedOnce = baseURL.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-                    let encodedTwice = encodedOnce.addingPercentEncoding(withAllowedCharacters: .alphanumerics) else {
-                  throw LocalInstallError.manifestURLFailed
-              }
-              let installURL = "itms-services://?action=download-manifest&url=\\(encodedTwice)"
-              let htmlURL = installURL.replacingOccurrences(of: "&", with: "&amp;")
-              let html = """
-              <html style="background-color:#111;color:white;font-family:-apple-system">
-                <head><meta name="viewport" content="width=device-width, initial-scale=1"><title>ReyForge Install</title></head>
-                <body style="padding:24px">
-                  <h2>Open in iTunes</h2>
-                  <p>ReyForge is handing the signed IPA to the iOS installer.</p>
-                  <p><a href="\\(htmlURL)">Open in iTunes</a></p>
-                  <script>setTimeout(function(){ window.location="\\(installURL)"; }, 150);</script>
-                </body>
-              </html>
-              """
-              return Data(html.utf8)
-          }
-
-''' + s[end:]
-          s = s.replace('contentType: "text/html; charset=utf-8"', 'contentType: "text/html"', 1)
-
-          hs = s.index('    private func responseHeader(status: String, contentType: String, length: Int) -> String {')
-          he = s.index('    private func beginBackgroundTask()', hs)
-          s = s[:hs] + '''    private func responseHeader(status: String, contentType: String, length: Int) -> String {
-              "HTTP/1.1 \\(status)\\r\\nContent-Type: \\(contentType)\\r\\nContent-Length: \\(length)\\r\\nCache-Control: no-store\\r\\nConnection: close\\r\\n\\r\\n"
-          }
-
-''' + s[he:]
-          p.write_text(s)
-          PY
-
-      - name: Generate ReyForge app icon
-        run: |
+          brew install xcodegen
           python3 -m venv /tmp/reyforge-icon-venv
           /tmp/reyforge-icon-venv/bin/python -m pip install --quiet pillow
-          /tmp/reyforge-icon-venv/bin/python - <<'PY'
-          from PIL import Image, ImageDraw
-          from pathlib import Path
-          out = Path('ipa-builder-build/Assets.xcassets/AppIcon.appiconset/AppIcon.png')
-          out.parent.mkdir(parents=True, exist_ok=True)
-          im = Image.new('RGB', (1024,1024), (45,34,95))
-          d = ImageDraw.Draw(im)
-          d.rounded_rectangle((110,110,914,914), radius=215, fill=(59,48,132), outline=(205,190,255), width=18)
-          d.polygon([(280,655),(468,467),(414,413),(226,601)], fill=(255,255,255))
-          d.rounded_rectangle((420,240,730,420), radius=46, fill=(255,255,255))
-          d.rounded_rectangle((510,378,618,730), radius=39, fill=(255,255,255))
-          d.polygon([(616,620),(796,800),(724,872),(544,692)], fill=(255,255,255))
-          im.save(out)
-          PY
+
+      - name: Prepare semi-local installer
+        run: python3 ipa-builder-build/patch_semi_local_installer.py
+
+      - name: Generate app icon
+        run: /tmp/reyforge-icon-venv/bin/python ipa-builder-build/generate_ci_icon.py
 
       - name: Generate Xcode project
         working-directory: ipa-builder-build
@@ -95,39 +38,18 @@ jobs:
 
       - name: Resolve Swift packages
         working-directory: ipa-builder-build
-        run: |
-          xcodebuild -resolvePackageDependencies \
-            -project IPABuilder.xcodeproj \
-            -scheme IPABuilder \
-            -derivedDataPath build
+        run: xcodebuild -resolvePackageDependencies -project IPABuilder.xcodeproj -scheme IPABuilder -derivedDataPath build
 
       - name: Patch Zsign compatibility
         working-directory: ipa-builder-build
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('build/SourcePackages/checkouts/Zsign-Package/src/zsign.mm')
-          s=p.read_text()
-          s=s.replace('bForce, bWeakInject, bEnableCache, excludeprovion);','bForce, bWeakInject, bEnableCache, !excludeprovion);',1)
-          s=s.replace('completionHandler(bRet, signError);','if (completionHandler) { completionHandler(bRet, signError); }',1)
-          p.write_text(s)
-          PY
+          python3 -c "from pathlib import Path; p=Path('build/SourcePackages/checkouts/Zsign-Package/src/zsign.mm'); s=p.read_text(); s=s.replace('bForce, bWeakInject, bEnableCache, excludeprovion);','bForce, bWeakInject, bEnableCache, !excludeprovion);',1); s=s.replace('completionHandler(bRet, signError);','if (completionHandler) { completionHandler(bRet, signError); }',1); p.write_text(s)"
 
       - name: Build ReyForge 2.6 unsigned
         working-directory: ipa-builder-build
         run: |
           set -o pipefail
-          xcodebuild \
-            -project IPABuilder.xcodeproj \
-            -scheme IPABuilder \
-            -configuration Release \
-            -sdk iphoneos \
-            -derivedDataPath build \
-            -disableAutomaticPackageResolution \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            clean build | tee xcodebuild.log
+          xcodebuild -project IPABuilder.xcodeproj -scheme IPABuilder -configuration Release -sdk iphoneos -derivedDataPath build -disableAutomaticPackageResolution CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" clean build | tee xcodebuild.log
 
       - name: Package and validate IPA
         working-directory: ipa-builder-build
