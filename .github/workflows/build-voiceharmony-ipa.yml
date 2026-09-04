@@ -1,0 +1,91 @@
+name: Build VoxHarmony IPA
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'ios/VoiceHarmony/**'
+      - '.github/workflows/build-voiceharmony-ipa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: |
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          xcodegen --version
+
+      - name: Generate Xcode project
+        run: |
+          cd ios/VoiceHarmony
+          xcodegen generate
+          xcodebuild -list -project VoxHarmony.xcodeproj
+
+      - name: Build unsigned iPhone app
+        run: |
+          cd ios/VoiceHarmony
+          xcodebuild \
+            -project VoxHarmony.xcodeproj \
+            -scheme VoxHarmony \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath "$RUNNER_TEMP/VoxHarmonyDerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package IPA
+        run: |
+          APP_PATH="$(find "$RUNNER_TEMP/VoxHarmonyDerivedData/Build/Products/Release-iphoneos" -maxdepth 1 -name '*.app' -type d | head -n 1)"
+          test -n "$APP_PATH"
+          rm -rf "$RUNNER_TEMP/Payload"
+          mkdir -p "$RUNNER_TEMP/Payload"
+          cp -R "$APP_PATH" "$RUNNER_TEMP/Payload/"
+          cd "$RUNNER_TEMP"
+          /usr/bin/zip -qry VoxHarmony-unsigned.ipa Payload
+          ls -lh VoxHarmony-unsigned.ipa
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoxHarmony-unsigned-IPA
+          path: ${{ runner.temp }}/VoxHarmony-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish latest IPA to repository
+        if: github.event_name == 'push'
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          mkdir -p builds
+          cp "$RUNNER_TEMP/VoxHarmony-unsigned.ipa" builds/VoxHarmony-unsigned.ipa
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add builds/VoxHarmony-unsigned.ipa
+          if git diff --cached --quiet; then
+            echo "IPA is unchanged."
+            exit 0
+          fi
+          git commit -m "Build VoxHarmony unsigned IPA [skip ci]"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
