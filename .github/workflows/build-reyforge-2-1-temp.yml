@@ -1,4 +1,4 @@
-name: Temporary Build ReyForge 2.5
+name: Temporary Build ReyForge 2.5.1
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
-      - name: Prepare trusted backloop.dev TLS identity
+      - name: Prepare Feather-style installer and trusted TLS identity
         run: |
           set -euo pipefail
           curl -fsSL https://backloop.dev/pack.json -o /tmp/backloop.json
@@ -79,6 +79,57 @@ jobs:
               raise SystemExit('backloop identity guard line missing')
           s = s.replace(guard_old, guard_new, 1)
 
+          # Match Feather's semi-local install handoff exactly: construct the
+          # external HTTPS manifest URL, encode it once as URL-query data, then
+          # encode that result again to alphanumerics before putting it inside
+          # itms-services. The local page also exposes an explicit Open in
+          # iTunes link in case automatic navigation is suppressed.
+          compat_start = s.index('    private func compatibilityInstallPageData() throws -> Data {')
+          compat_end = s.index('    private func sendSimple(', compat_start)
+          compat = '''    private func compatibilityInstallPageData() throws -> Data {
+              let payload = "http://127.0.0.1:\\(port.rawValue)/\\(token)/app.ipa"
+              let baseURL = "https://api.palera.in/genPlist?bundleid=\\(activeBundleIdentifier)&name=ReyForge Signed App&version=1.0&fetchurl=\\(payload)"
+
+              guard let encodedOnce = baseURL.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+                    let encodedTwice = encodedOnce.addingPercentEncoding(withAllowedCharacters: .alphanumerics) else {
+                  throw LocalInstallError.manifestURLFailed
+              }
+
+              let installURL = "itms-services://?action=download-manifest&url=\\(encodedTwice)"
+              let htmlURL = installURL.replacingOccurrences(of: "&", with: "&amp;")
+              let html = """
+              <html style="background-color:#111;color:white;font-family:-apple-system">
+                <head>
+                  <meta name="viewport" content="width=device-width, initial-scale=1">
+                  <title>ReyForge Install</title>
+                </head>
+                <body style="padding:24px">
+                  <h2>Open in iTunes</h2>
+                  <p>ReyForge is handing the signed IPA to the iOS installer.</p>
+                  <p><a style="display:inline-block;padding:14px 18px;border-radius:12px;background:white;color:black;text-decoration:none;font-weight:600" href="\\(htmlURL)">Open in iTunes</a></p>
+                  <script type="text/javascript">setTimeout(function(){ window.location="\\(installURL)"; }, 150);</script>
+                </body>
+              </html>
+              """
+              return Data(html.utf8)
+          }
+
+'''
+          s = s[:compat_start] + compat + s[compat_end:]
+          s = s.replace('contentType: "text/html; charset=utf-8"', 'contentType: "text/html"', 1)
+
+          # Emit unambiguous RFC-style CRLF HTTP headers. This avoids Safari's
+          # "response cannot be parsed" error with the raw Network.framework
+          # server and mirrors what a normal HTTP server such as Vapor emits.
+          header_start = s.index('    private func responseHeader(status: String, contentType: String, length: Int) -> String {')
+          header_end = s.index('    private func beginBackgroundTask()', header_start)
+          header = '''    private func responseHeader(status: String, contentType: String, length: Int) -> String {
+              return "HTTP/1.1 \\(status)\\r\\nContent-Type: \\(contentType)\\r\\nContent-Length: \\(length)\\r\\nCache-Control: no-store\\r\\nConnection: close\\r\\n\\r\\n"
+          }
+
+'''
+          s = s[:header_start] + header + s[header_end:]
+
           p12_b64 = base64.b64encode(Path('/tmp/backloop.p12').read_bytes()).decode()
           expiry = Path('/tmp/backloop-expiry.txt').read_text().strip()
           if s.count('__BACKLOOP_P12_BASE64__') != 1:
@@ -90,7 +141,15 @@ jobs:
 
           if '__BACKLOOP_' in s:
               raise SystemExit('backloop placeholders remain')
+          if 'Open in iTunes' not in s or 'encodedTwice' not in s:
+              raise SystemExit('Feather-style iTunes handoff patch missing')
           source.write_text(s)
+
+          project = Path('ipa-builder-build/project.yml')
+          p = project.read_text()
+          p = p.replace('MARKETING_VERSION: "2.5"', 'MARKETING_VERSION: "2.5.1"', 1)
+          p = p.replace('CURRENT_PROJECT_VERSION: "9"', 'CURRENT_PROJECT_VERSION: "10"', 1)
+          project.write_text(p)
           PY
 
       - name: Generate ReyForge app icon
@@ -115,10 +174,10 @@ jobs:
           d.rounded_rectangle((510,378,618,730), radius=39, fill=(255,255,255))
           d.polygon([(616,620),(796,800),(724,872),(544,692)], fill=(255,255,255))
           try:
-              font = ImageFont.truetype('/System/Library/Fonts/SFNS.ttf', 92)
+              font = ImageFont.truetype('/System/Library/Fonts/SFNS.ttf', 82)
           except Exception:
               font = ImageFont.load_default()
-          label='2.5'
+          label='2.5.1'
           box=d.textbbox((0,0),label,font=font)
           d.text(((size-(box[2]-box[0]))/2,800),label,font=font,fill=(238,233,255))
           im.save(out)
@@ -160,7 +219,7 @@ jobs:
           p.write_text(s)
           PY
 
-      - name: Build ReyForge 2.5 unsigned
+      - name: Build ReyForge 2.5.1 unsigned
         working-directory: ipa-builder-build
         run: |
           set -o pipefail
@@ -182,25 +241,27 @@ jobs:
           rm -rf Payload
           mkdir Payload
           cp -R build/Build/Products/Release-iphoneos/ReyForge.app Payload/
-          ditto -c -k --sequesterRsrc --keepParent Payload ReyForge-2.5-unsigned.ipa
-          unzip -t ReyForge-2.5-unsigned.ipa
+          ditto -c -k --sequesterRsrc --keepParent Payload ReyForge-2.5.1-unsigned.ipa
+          unzip -t ReyForge-2.5.1-unsigned.ipa
           test -f Payload/ReyForge.app/ReyForge
           if find Payload/ReyForge.app -name '*.gguf' | grep -q .; then
             echo "Unexpected GGUF bundled"
             exit 1
           fi
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Payload/ReyForge.app/Info.plist)" = "2.5"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' Payload/ReyForge.app/Info.plist)" = "9"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Payload/ReyForge.app/Info.plist)" = "2.5.1"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' Payload/ReyForge.app/Info.plist)" = "10"
           strings Payload/ReyForge.app/ReyForge | grep -q 'backloop.dev'
           strings Payload/ReyForge.app/ReyForge | grep -q 'api.palera.in'
+          strings Payload/ReyForge.app/ReyForge | grep -q 'Open in iTunes'
+          strings Payload/ReyForge.app/ReyForge | grep -q 'itms-services'
           file Payload/ReyForge.app/ReyForge
-          du -h ReyForge-2.5-unsigned.ipa
+          du -h ReyForge-2.5.1-unsigned.ipa
 
       - name: Upload ReyForge IPA
         uses: actions/upload-artifact@v4
         with:
-          name: ReyForge-2.5-unsigned-ipa
-          path: ipa-builder-build/ReyForge-2.5-unsigned.ipa
+          name: ReyForge-2.5.1-unsigned-ipa
+          path: ipa-builder-build/ReyForge-2.5.1-unsigned.ipa
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
