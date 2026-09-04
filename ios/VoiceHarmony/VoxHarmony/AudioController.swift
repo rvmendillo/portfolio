@@ -17,6 +17,7 @@ final class AudioController: NSObject, ObservableObject, AVAudioPlayerDelegate {
     @Published var leadLevel: Double = 0.88
     @Published var harmonyLevel: Double = 0.72
     @Published var analysis: MusicalAnalysis?
+    @Published var analysisEngineName: String = "Basic Pitch AI"
 
     private var recorder: AVAudioRecorder?
     private var player: AVAudioPlayer?
@@ -128,17 +129,18 @@ final class AudioController: NSObject, ObservableObject, AVAudioPlayerDelegate {
 
     private func beginAnalysis(for url: URL) {
         isAnalyzing = true
-        statusText = "Listening for melody, key, scale and likely chords…"
+        statusText = "Basic Pitch AI is transcribing melody and inferring key, scale and chords…"
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             do {
-                let result = try MelodyAnalyzer.analyze(sourceURL: url)
+                let resolved = try Self.resolveAnalysis(for: url)
                 DispatchQueue.main.async {
                     guard let self, self.sourceURL == url else { return }
-                    self.analysis = result
+                    self.analysis = resolved.analysis
+                    self.analysisEngineName = resolved.engineName
                     self.isAnalyzing = false
-                    let percent = Int((result.key.confidence * 100).rounded())
-                    self.statusText = "Detected \(result.key.displayName) • \(percent)% key confidence • \(result.chords.count) chord windows"
+                    let percent = Int((resolved.analysis.key.confidence * 100).rounded())
+                    self.statusText = "\(resolved.engineName) • \(resolved.analysis.key.displayName) • \(percent)% key confidence • \(resolved.analysis.chords.count) chord windows"
                 }
             } catch {
                 DispatchQueue.main.async {
@@ -148,6 +150,15 @@ final class AudioController: NSObject, ObservableObject, AVAudioPlayerDelegate {
                     self.errorMessage = error.localizedDescription
                 }
             }
+        }
+    }
+
+    private static func resolveAnalysis(for url: URL) throws -> (analysis: MusicalAnalysis, engineName: String) {
+        do {
+            return (try MLPitchAssistant.analyze(sourceURL: url), "Basic Pitch AI")
+        } catch {
+            // Keep VoxHarmony usable if the ML model cannot run on a particular file/device.
+            return (try MelodyAnalyzer.analyze(sourceURL: url), "Adaptive pitch fallback")
         }
     }
 
@@ -205,32 +216,40 @@ final class AudioController: NSObject, ObservableObject, AVAudioPlayerDelegate {
 
         stopPlayback()
         isProcessing = true
-        statusText = "Creating \(selectedPreset.name) with key-aware note mapping…"
+        statusText = "Creating \(selectedPreset.name) from AI-transcribed melody, key and chord context…"
 
         let preset = selectedPreset
         let lead = Float(leadLevel)
         let harmony = Float(harmonyLevel)
         let destinationDirectory = workspaceDirectory
         let existingAnalysis = analysis
+        let existingEngineName = analysisEngineName
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             do {
-                let resolvedAnalysis = try existingAnalysis ?? MelodyAnalyzer.analyze(sourceURL: sourceURL)
+                let resolved: (analysis: MusicalAnalysis, engineName: String)
+                if let existingAnalysis {
+                    resolved = (existingAnalysis, existingEngineName)
+                } else {
+                    resolved = try Self.resolveAnalysis(for: sourceURL)
+                }
+
                 let result = try HarmonyRenderer.render(
                     sourceURL: sourceURL,
                     preset: preset,
-                    analysis: resolvedAnalysis,
+                    analysis: resolved.analysis,
                     leadLevel: lead,
                     harmonyLevel: harmony,
                     destinationDirectory: destinationDirectory
                 )
                 DispatchQueue.main.async {
                     guard let self else { return }
-                    self.analysis = resolvedAnalysis
+                    self.analysis = resolved.analysis
+                    self.analysisEngineName = resolved.engineName
                     self.outputURL = result
                     self.outputName = result.lastPathComponent
                     self.isProcessing = false
-                    self.statusText = "Harmony ready in \(resolvedAnalysis.key.displayName). Preview it or share the finished file."
+                    self.statusText = "Harmony ready in \(resolved.analysis.key.displayName) using \(resolved.engineName). Preview it or share the finished file."
                 }
             } catch {
                 DispatchQueue.main.async {
