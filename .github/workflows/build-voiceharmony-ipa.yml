@@ -21,6 +21,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Bundle Spotify Basic Pitch Core ML
+        run: |
+          rm -rf "$RUNNER_TEMP/basic-pitch"
+          git clone --depth 1 https://github.com/spotify/basic-pitch.git "$RUNNER_TEMP/basic-pitch"
+          rm -rf ios/VoiceHarmony/VoxHarmony/nmp.mlpackage
+          cp -R "$RUNNER_TEMP/basic-pitch/basic_pitch/saved_models/icassp_2022/nmp.mlpackage" ios/VoiceHarmony/VoxHarmony/nmp.mlpackage
+          mkdir -p ios/VoiceHarmony/VoxHarmony/OpenSource
+          cp "$RUNNER_TEMP/basic-pitch/LICENSE" ios/VoiceHarmony/VoxHarmony/OpenSource/BasicPitch-LICENSE.txt
+          cp "$RUNNER_TEMP/basic-pitch/NOTICE" ios/VoiceHarmony/VoxHarmony/OpenSource/BasicPitch-NOTICE.txt
+          test -f ios/VoiceHarmony/VoxHarmony/nmp.mlpackage/Manifest.json
+          echo "Bundled Spotify Basic Pitch Core ML model and notices."
+
       - name: Install XcodeGen
         run: |
           if ! command -v xcodegen >/dev/null 2>&1; then
@@ -52,6 +64,7 @@ jobs:
         run: |
           APP_PATH="$(find "$RUNNER_TEMP/VoxHarmonyDerivedData/Build/Products/Release-iphoneos" -maxdepth 1 -name '*.app' -type d | head -n 1)"
           test -n "$APP_PATH"
+          test -d "$APP_PATH/nmp.mlmodelc"
           rm -rf "$RUNNER_TEMP/Payload"
           mkdir -p "$RUNNER_TEMP/Payload"
           cp -R "$APP_PATH" "$RUNNER_TEMP/Payload/"
@@ -69,6 +82,7 @@ jobs:
 
       - name: Publish latest IPA to repository
         if: github.event_name == 'push'
+        continue-on-error: true
         run: |
           cd "$GITHUB_WORKSPACE"
           mkdir -p builds
@@ -86,6 +100,8 @@ jobs:
             if git push origin HEAD:main; then
               exit 0
             fi
+            git rebase --abort || true
             sleep 2
           done
-          exit 1
+          echo "Repository publish skipped after concurrent updates; Actions artifact remains valid."
+          exit 0
