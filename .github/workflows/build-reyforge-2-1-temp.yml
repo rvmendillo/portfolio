@@ -74,44 +74,12 @@ jobs:
             -scheme IPABuilder \
             -derivedDataPath build
 
-      - name: Repair Zsign SwiftPM bridge sources
+      - name: Verify Feather Zsign revision
         working-directory: ipa-builder-build
         run: |
-          set -euxo pipefail
-          PKG="build/SourcePackages/checkouts/Zsign-Package"
-          test -f "$PKG/swift/zsign.mm"
-          test -f "$PKG/swift/utils.mm"
-          cp "$PKG/swift/zsign.mm" "$PKG/src/zsign_bridge.mm"
-          cp "$PKG/swift/utils.mm" "$PKG/src/utils_bridge.mm"
-          cp "$PKG/swift/zsign.hpp" "$PKG/src/include/zsign.hpp"
-          cp "$PKG/swift/utils.hpp" "$PKG/src/include/utils.hpp"
-          chmod u+w "$PKG/Package.swift" "$PKG/src/zsign_bridge.mm"
-          python3 - <<'PY'
-          from pathlib import Path
-
-          manifest = Path('build/SourcePackages/checkouts/Zsign-Package/Package.swift')
-          s = manifest.read_text()
-          s = s.replace('"../swift/utils.mm",', '"utils_bridge.mm",')
-          s = s.replace('"../swift/zsign.mm",', '"zsign_bridge.mm",')
-          manifest.write_text(s)
-          assert '"utils_bridge.mm",' in s
-          assert '"zsign_bridge.mm",' in s
-
-          bridge = Path('build/SourcePackages/checkouts/Zsign-Package/src/zsign_bridge.mm')
-          b = bridge.read_text()
-          old_completion = 'void(^completionHandler)(BOOL success, NSError *error)'
-          assert old_completion in b
-          b = b.replace(old_completion, 'void(^completionHandler)(BOOL success)', 1)
-          old_sign = 'arrDylibFiles, bForce, bWeakInject, bEnableCache, excludeprovion)'
-          assert old_sign in b
-          b = b.replace(old_sign, 'arrDylibFiles, arrDisDylibFiles, bForce, bWeakInject, bEnableCache, excludeprovion)', 1)
-          bridge.write_text(b)
-          assert old_completion not in b
-          assert 'arrDylibFiles, arrDisDylibFiles, bForce' in b
-          PY
-          grep -n "bridge.mm" "$PKG/Package.swift"
-          grep -n "completionHandler" "$PKG/src/zsign_bridge.mm" | head
-          grep -n "arrDylibFiles, arrDisDylibFiles" "$PKG/src/zsign_bridge.mm"
+          test "$(git -C build/SourcePackages/checkouts/Zsign-Package rev-parse HEAD)" = "6ffe703df73ef9069adacdbb19d571f11a69a801"
+          grep -q '"zsign.mm"' build/SourcePackages/checkouts/Zsign-Package/Package.swift
+          grep -q 'name: "ZsignSwift"' build/SourcePackages/checkouts/Zsign-Package/Package.swift
 
       - name: Build ReyForge 2.1 unsigned
         working-directory: ipa-builder-build
