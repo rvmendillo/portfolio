@@ -22,21 +22,32 @@ jobs:
           git checkout 6ffe703df73ef9069adacdbb19d571f11a69a801
           test "$(git rev-parse HEAD)" = "6ffe703df73ef9069adacdbb19d571f11a69a801"
 
+      - name: Patch CLI compatibility
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('zsign/src/zsign.cpp')
+          s = p.read_text()
+          old = 'arrDylibFiles, bForce, bWeakInject, bEnableCache);'
+          new = 'arrDylibFiles, bForce, bWeakInject, bEnableCache, false);'
+          assert old in s
+          p.write_text(s.replace(old, new, 1))
+          PY
+
       - name: Build Linux CLI
         working-directory: zsign/build/linux
         run: make clean && make -j2
 
       - name: Validate CLI
-        working-directory: zsign/build/linux
         run: |
-          test -x zsign
-          ./zsign -v || ./zsign -h
-          file zsign
+          test -x zsign/bin/zsign
+          zsign/bin/zsign -v || zsign/bin/zsign -h
+          file zsign/bin/zsign
 
       - name: Upload CLI
         uses: actions/upload-artifact@v4
         with:
           name: zsign-linux-feather
-          path: zsign/build/linux/zsign
+          path: zsign/bin/zsign
           if-no-files-found: error
           retention-days: 1
