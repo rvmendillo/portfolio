@@ -9,12 +9,14 @@ final class AudioController: NSObject, ObservableObject, AVAudioPlayerDelegate {
     @Published var outputName: String = ""
     @Published var isRecording = false
     @Published var isProcessing = false
+    @Published var isAnalyzing = false
     @Published var isPlaying = false
     @Published var statusText = "Record or import an isolated vocal to begin."
     @Published var errorMessage: String?
     @Published var selectedPreset: HarmonyPreset = HarmonyPreset.presets[0]
     @Published var leadLevel: Double = 0.88
     @Published var harmonyLevel: Double = 0.72
+    @Published var analysis: MusicalAnalysis?
 
     private var recorder: AVAudioRecorder?
     private var player: AVAudioPlayer?
@@ -73,6 +75,7 @@ final class AudioController: NSObject, ObservableObject, AVAudioPlayerDelegate {
 
             recorder = newRecorder
             isRecording = true
+            analysis = nil
             outputURL = nil
             outputName = ""
             statusText = "Recording… sing the lead vocal, then tap Stop."
@@ -90,7 +93,8 @@ final class AudioController: NSObject, ObservableObject, AVAudioPlayerDelegate {
         sourceName = recorder.url.lastPathComponent
         outputURL = nil
         outputName = ""
-        statusText = "Vocal ready. Choose a harmony style and render it."
+        analysis = nil
+        beginAnalysis(for: recorder.url)
     }
 
     func importAudio(from url: URL) {
@@ -115,9 +119,35 @@ final class AudioController: NSObject, ObservableObject, AVAudioPlayerDelegate {
             sourceName = url.lastPathComponent
             outputURL = nil
             outputName = ""
-            statusText = "Imported vocal ready. Choose a harmony style and render it."
+            analysis = nil
+            beginAnalysis(for: destination)
         } catch {
             errorMessage = "That audio file could not be imported: \(error.localizedDescription)"
+        }
+    }
+
+    private func beginAnalysis(for url: URL) {
+        isAnalyzing = true
+        statusText = "Listening for melody, key, scale and likely chords…"
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            do {
+                let result = try MelodyAnalyzer.analyze(sourceURL: url)
+                DispatchQueue.main.async {
+                    guard let self, self.sourceURL == url else { return }
+                    self.analysis = result
+                    self.isAnalyzing = false
+                    let percent = Int((result.key.confidence * 100).rounded())
+                    self.statusText = "Detected \(result.key.displayName) • \(percent)% key confidence • \(result.chords.count) chord windows"
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    guard let self, self.sourceURL == url else { return }
+                    self.isAnalyzing = false
+                    self.statusText = "Melody analysis needs a cleaner vocal."
+                    self.errorMessage = error.localizedDescription
+                }
+            }
         }
     }
 
@@ -168,37 +198,45 @@ final class AudioController: NSObject, ObservableObject, AVAudioPlayerDelegate {
             errorMessage = "Stop the recording before creating harmony."
             return
         }
+        guard !isAnalyzing else {
+            errorMessage = "VoxHarmony is still detecting the melody and key."
+            return
+        }
 
         stopPlayback()
         isProcessing = true
-        statusText = "Rendering \(selectedPreset.name) on-device…"
+        statusText = "Creating \(selectedPreset.name) with key-aware note mapping…"
 
         let preset = selectedPreset
         let lead = Float(leadLevel)
         let harmony = Float(harmonyLevel)
         let destinationDirectory = workspaceDirectory
+        let existingAnalysis = analysis
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             do {
+                let resolvedAnalysis = try existingAnalysis ?? MelodyAnalyzer.analyze(sourceURL: sourceURL)
                 let result = try HarmonyRenderer.render(
                     sourceURL: sourceURL,
                     preset: preset,
+                    analysis: resolvedAnalysis,
                     leadLevel: lead,
                     harmonyLevel: harmony,
                     destinationDirectory: destinationDirectory
                 )
                 DispatchQueue.main.async {
                     guard let self else { return }
+                    self.analysis = resolvedAnalysis
                     self.outputURL = result
                     self.outputName = result.lastPathComponent
                     self.isProcessing = false
-                    self.statusText = "Harmony ready. Preview it or share the finished file."
+                    self.statusText = "Harmony ready in \(resolvedAnalysis.key.displayName). Preview it or share the finished file."
                 }
             } catch {
                 DispatchQueue.main.async {
                     guard let self else { return }
                     self.isProcessing = false
-                    self.statusText = "Could not render the harmony."
+                    self.statusText = "Could not render the adaptive harmony."
                     self.errorMessage = error.localizedDescription
                 }
             }
