@@ -3,64 +3,45 @@ import SwiftUI
 struct QuickVibeSheet: View {
     @EnvironmentObject private var store: StudioStore
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject private var modelManager = LargeCodeModelManager.shared
+    @ObservedObject private var planner = AppleScreenPlanner.shared
 
     @State private var prompt = ""
     @State private var isRunning = false
-    @State private var status = "Describe a native iOS feature and ReyForge will add it directly."
-    @State private var lastOutput = ""
+    @State private var status = "Describe the screen you want. ReyForge will choose and place the native controls."
+    @State private var planSummary = ""
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("Local coding model") {
-                    LabeledContent("Model", value: "Qwen2.5-Coder-3B")
-                    LabeledContent("Quantization", value: "Q4_K_M")
-                    LabeledContent("Storage", value: modelManager.sizeText)
-
-                    HStack {
-                        if modelManager.isDownloading { ProgressView() }
-                        Text(modelManager.status)
-                            .font(.caption)
-                    }
-
-                    if let error = modelManager.lastError {
-                        Text(error)
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                    }
-
-                    if modelManager.isInstalled {
-                        Button(role: .destructive) {
-                            modelManager.removeModel()
-                        } label: {
-                            Label("Remove 3B Model", systemImage: "trash")
-                        }
-                    } else {
-                        Button {
-                            Task { await modelManager.downloadModel() }
-                        } label: {
-                            Label(modelManager.isDownloading ? "Downloading Model…" : "Download 3B Swift Coding Model", systemImage: "arrow.down.circle")
-                        }
-                        .disabled(modelManager.isDownloading)
-                    }
+                Section("Apple Intelligence") {
+                    LabeledContent("Planner", value: "Apple Foundation Models")
+                    LabeledContent("Storage", value: "System model · no extra download")
+                    Label(planner.availabilityText, systemImage: planner.isAvailable ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                        .foregroundStyle(planner.isAvailable ? .green : .orange)
                 }
 
                 Section {
                     TextEditor(text: $prompt)
-                        .frame(minHeight: 120)
+                        .frame(minHeight: 130)
                         .overlay(alignment: .topLeading) {
                             if prompt.isEmpty {
-                                Text("Example: Build a native iOS settings screen with account information, notification and Face ID toggles, a destructive sign-out button, and a medium WidgetKit summary.")
+                                Text("Example: Create a dashboard for a personal finance app with useful KPIs, savings progress, recent transactions, and a primary add-transaction action.")
                                     .foregroundStyle(.secondary)
                                     .padding(.top, 8)
                                     .allowsHitTesting(false)
                             }
                         }
                 } header: {
-                    Label("Vibe request", systemImage: "sparkles")
+                    Label("Describe the screen", systemImage: "wand.and.stars")
                 } footer: {
-                    Text("Qwen2.5-Coder-3B-Instruct is code-specialized and runs locally through llama.cpp after a one-time ~2.1 GB download. ReyForge prompts it as a Swift 6 / SwiftUI / UIKit engineer. The deterministic fallback remains available if the model is not installed or inference fails.")
+                    Text("The model generates a typed screen plan — component types, positions, sizes, hierarchy, and interactions. ReyForge applies that plan directly to the native SwiftUI canvas. It does not generate or parse Swift source code.")
+                }
+
+                Section("How it behaves") {
+                    Label("Infers the right controls from broad requests", systemImage: "brain.head.profile")
+                    Label("Places controls automatically on the 390×844 canvas", systemImage: "rectangle.3.group")
+                    Label("Adds useful actions and navigation", systemImage: "arrow.triangle.branch")
+                    Label("Keeps the result editable in Studio", systemImage: "slider.horizontal.3")
                 }
 
                 Section("Status") {
@@ -68,12 +49,10 @@ struct QuickVibeSheet: View {
                         if isRunning { ProgressView() }
                         Text(status)
                     }
-                    if !lastOutput.isEmpty {
-                        DisclosureGroup("Generated patch") {
-                            Text(lastOutput)
-                                .font(.system(.caption2, design: .monospaced))
-                                .textSelection(.enabled)
-                        }
+                    if !planSummary.isEmpty {
+                        Text(planSummary)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
 
@@ -81,14 +60,14 @@ struct QuickVibeSheet: View {
                     Button {
                         runVibe()
                     } label: {
-                        Label(isRunning ? "Building…" : "Build Native Feature", systemImage: "wand.and.stars")
+                        Label(isRunning ? "Designing Screen…" : "Create / Modify Screen", systemImage: "sparkles.rectangle.stack")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(isRunning || prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
-            .navigationTitle("ReyForge Vibe")
+            .navigationTitle("AI Screen Builder")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
@@ -99,38 +78,38 @@ struct QuickVibeSheet: View {
 
     private func runVibe() {
         guard let project = store.selected else { return }
-        let request = prompt
+        let request = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         isRunning = true
-        status = modelManager.isInstalled
-            ? "Qwen2.5-Coder-3B is designing the native iOS feature…"
-            : "3B model not installed — using deterministic fallback…"
-        lastOutput = ""
+        planSummary = ""
+        status = planner.isAvailable
+            ? "Apple Intelligence is planning the native screen…"
+            : planner.availabilityText
 
         Task {
-            let output: String
-            var inferenceError: String?
             do {
-                output = try await Task.detached(priority: .userInitiated) {
-                    try LocalVibeModel.shared.propose(prompt: request, project: project)
-                }.value
+                let plan = try await planner.plan(prompt: request, project: project)
+                var inserted: [StudioComponent] = []
+                store.updateProject { current in
+                    inserted = planner.apply(plan, to: &current)
+                }
+                store.selectedComponentID = inserted.last?.id ?? store.selectedComponentID
+                planSummary = "\(plan.summary) · \(inserted.count) native component(s) placed."
+                status = "Screen updated live on the canvas."
             } catch {
-                output = ""
-                inferenceError = error.localizedDescription
+                if request.lowercased().contains("dashboard") {
+                    let fallback = AppleScreenPlanner.fallbackDashboard()
+                    var inserted: [StudioComponent] = []
+                    store.updateProject { current in
+                        inserted = planner.apply(fallback, to: &current)
+                    }
+                    store.selectedComponentID = inserted.last?.id ?? store.selectedComponentID
+                    planSummary = "Apple Intelligence was unavailable, so ReyForge used its native dashboard template."
+                    status = "Dashboard placed. \(error.localizedDescription)"
+                } else {
+                    status = error.localizedDescription
+                    planSummary = "No changes were applied."
+                }
             }
-
-            let patch = VibePatchParser.parse(output, fallbackPrompt: request, project: project)
-            store.updateProject { current in
-                current.components.append(contentsOf: patch.components)
-                for (key, value) in patch.variableUpdates { current.variables[key] = value }
-                if let widget = patch.widget { current.widget = widget }
-            }
-            store.selectedComponentID = patch.components.last?.id ?? store.selectedComponentID
-            if output.isEmpty {
-                lastOutput = inferenceError.map { "Fallback used: \($0)" } ?? "Deterministic fallback"
-            } else {
-                lastOutput = output
-            }
-            status = "Added \(patch.components.count) component(s). Changes are live on the canvas."
             isRunning = false
         }
     }
