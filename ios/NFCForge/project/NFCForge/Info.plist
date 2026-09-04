@@ -3,12 +3,13 @@
 <plist version="1.0">
 <dict>
   <key>CFBundleDisplayName</key><string>NFC Forge</string>
+  <key>CFBundleExecutable</key><string>$(EXECUTABLE_NAME)</string>
   <key>CFBundleIdentifier</key><string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
   <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
   <key>CFBundleName</key><string>$(PRODUCT_NAME)</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>1.0.0</string>
-  <key>CFBundleVersion</key><string>1</string>
+  <key>CFBundleShortVersionString</key><string>1.0.1</string>
+  <key>CFBundleVersion</key><string>2</string>
   <key>LSRequiresIPhoneOS</key><true/>
   <key>NFCReaderUsageDescription</key><string>NFC Forge reads and writes NFC tags that you intentionally scan.</string>
   <key>UIApplicationSceneManifest</key><dict><key>UIApplicationSupportsMultipleScenes</key><false/></dict>
