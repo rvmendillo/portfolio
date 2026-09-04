@@ -1,4 +1,5 @@
 name: Temporary Build ReyForge 2.0
+# rebuild: formatted Swift sources and typed drag/drop
 
 on:
   push:
