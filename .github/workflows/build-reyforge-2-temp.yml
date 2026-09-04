@@ -24,9 +24,10 @@ jobs:
         run: |
           mkdir -p ipa-builder-build/Resources
           curl --fail --location --retry 3 \
-            "https://huggingface.co/tensorblock/SmolLM2-360M-Instruct-GGUF/resolve/main/SmolLM2-360M-Instruct-Q4_K_M.gguf?download=true" \
+            "https://huggingface.co/unsloth/SmolLM2-360M-Instruct-GGUF/resolve/main/SmolLM2-360M-Instruct-Q4_K_M.gguf?download=true" \
             --output ipa-builder-build/Resources/SmolLM2-360M-Instruct-Q4_K_M.gguf
           test -s ipa-builder-build/Resources/SmolLM2-360M-Instruct-Q4_K_M.gguf
+          echo "16c7f1667fea34bacad196a57b548effcb37614db4ab5677a20c8c7b823b9e63  ipa-builder-build/Resources/SmolLM2-360M-Instruct-Q4_K_M.gguf" | shasum -a 256 -c -
           ls -lh ipa-builder-build/Resources/SmolLM2-360M-Instruct-Q4_K_M.gguf
 
       - name: Generate ReyForge app icon
@@ -44,7 +45,7 @@ jobs:
               t = y / (size - 1)
               c = (int(45 + 35*t), int(35 + 30*t), int(95 + 85*t))
               d.line((0, y, size, y), fill=c)
-          d.rounded_rectangle((118,118,906,906), radius=210, fill=(255,255,255,22), outline=(188,170,255), width=18)
+          d.rounded_rectangle((118,118,906,906), radius=210, fill=(60,51,130), outline=(188,170,255), width=18)
           d.polygon([(290,660),(472,478),(421,427),(239,609)], fill=(255,255,255))
           d.rounded_rectangle((426,250,720,420), radius=44, fill=(255,255,255))
           d.rounded_rectangle((511,380,614,725), radius=38, fill=(255,255,255))
