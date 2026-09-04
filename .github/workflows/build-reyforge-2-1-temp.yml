@@ -73,12 +73,10 @@ jobs:
               raise SystemExit('LocalInstallMode marker missing')
           s = s.replace(enum_old, 'private enum LocalInstallMode: Equatable {', 1)
 
-          guard_old = '''        guard backloopP12Base64 != "__BACKLOOP_P12_BASE64__",
-                    let data = Data(base64Encoded: backloopP12Base64) else {'''
-          guard_new = '''        guard backloopP12Base64.count > 1000,
-                    let data = Data(base64Encoded: backloopP12Base64) else {'''
+          guard_old = 'guard backloopP12Base64 != "__BACKLOOP_P12_BASE64__",'
+          guard_new = 'guard backloopP12Base64.count > 1000,'
           if guard_old not in s:
-              raise SystemExit('backloop identity guard marker missing')
+              raise SystemExit('backloop identity guard line missing')
           s = s.replace(guard_old, guard_new, 1)
 
           p12_b64 = base64.b64encode(Path('/tmp/backloop.p12').read_bytes()).decode()
