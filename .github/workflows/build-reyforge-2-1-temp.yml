@@ -1,0 +1,111 @@
+name: Temporary Build ReyForge 2.1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/build-reyforge-2-1-temp.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - name: Checkout ReyForge source branch
+        uses: actions/checkout@v6
+        with:
+          ref: ipa-builder-build-20260903
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Download tiny local SmolLM2 135M
+        run: |
+          mkdir -p ipa-builder-build/Resources
+          rm -f ipa-builder-build/Resources/*.gguf
+          curl --fail --location --retry 3 \
+            "https://huggingface.co/unsloth/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q4_K_M.gguf?download=true" \
+            --output ipa-builder-build/Resources/SmolLM2-360M-Instruct-Q4_K_M.gguf
+          test -s ipa-builder-build/Resources/SmolLM2-360M-Instruct-Q4_K_M.gguf
+          echo "ed5fa30c487b282ec156c29062f1222e5c20875a944ac98289dbd242e947f747  ipa-builder-build/Resources/SmolLM2-360M-Instruct-Q4_K_M.gguf" | shasum -a 256 -c -
+          ls -lh ipa-builder-build/Resources/SmolLM2-360M-Instruct-Q4_K_M.gguf
+
+      - name: Generate ReyForge app icon
+        run: |
+          python3 -m venv /tmp/reyforge-icon-venv
+          /tmp/reyforge-icon-venv/bin/python -m pip install --quiet pillow
+          /tmp/reyforge-icon-venv/bin/python - <<'PY'
+          from PIL import Image, ImageDraw, ImageFont
+          from pathlib import Path
+          out = Path('ipa-builder-build/Assets.xcassets/AppIcon.appiconset/AppIcon.png')
+          out.parent.mkdir(parents=True, exist_ok=True)
+          size = 1024
+          im = Image.new('RGB', (size, size), (27, 22, 60))
+          d = ImageDraw.Draw(im)
+          for y in range(size):
+              t = y / (size - 1)
+              c = (int(45 + 35*t), int(34 + 30*t), int(95 + 90*t))
+              d.line((0, y, size, y), fill=c)
+          d.rounded_rectangle((110,110,914,914), radius=215, fill=(59,48,132), outline=(205,190,255), width=18)
+          d.polygon([(280,655),(468,467),(414,413),(226,601)], fill=(255,255,255))
+          d.rounded_rectangle((420,240,730,420), radius=46, fill=(255,255,255))
+          d.rounded_rectangle((510,378,618,730), radius=39, fill=(255,255,255))
+          d.polygon([(616,620),(796,800),(724,872),(544,692)], fill=(255,255,255))
+          try:
+              font = ImageFont.truetype('/System/Library/Fonts/SFNS.ttf', 92)
+          except Exception:
+              font = ImageFont.load_default()
+          label='2.1'
+          box=d.textbbox((0,0),label,font=font)
+          d.text(((size-(box[2]-box[0]))/2,800),label,font=font,fill=(238,233,255))
+          im.save(out)
+          PY
+
+      - name: Generate Xcode project
+        working-directory: ipa-builder-build
+        run: xcodegen generate
+
+      - name: Resolve Swift packages
+        working-directory: ipa-builder-build
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project IPABuilder.xcodeproj \
+            -scheme IPABuilder
+
+      - name: Build ReyForge 2.1 unsigned
+        working-directory: ipa-builder-build
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project IPABuilder.xcodeproj \
+            -scheme IPABuilder \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            clean build | tee xcodebuild.log
+
+      - name: Package and validate IPA
+        working-directory: ipa-builder-build
+        run: |
+          rm -rf Payload
+          mkdir Payload
+          cp -R build/Build/Products/Release-iphoneos/ReyForge.app Payload/
+          ditto -c -k --sequesterRsrc --keepParent Payload ReyForge-2.1-unsigned.ipa
+          unzip -t ReyForge-2.1-unsigned.ipa
+          test -f Payload/ReyForge.app/ReyForge
+          test -f Payload/ReyForge.app/SmolLM2-360M-Instruct-Q4_K_M.gguf
+          file Payload/ReyForge.app/ReyForge
+          du -h ReyForge-2.1-unsigned.ipa
+
+      - name: Upload ReyForge IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ReyForge-2.1-unsigned-ipa
+          path: ipa-builder-build/ReyForge-2.1-unsigned.ipa
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
