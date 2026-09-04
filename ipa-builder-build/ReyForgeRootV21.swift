@@ -7,6 +7,7 @@ struct ReyForgeRootV21: View {
 
     @State private var showVibe = false
     @State private var showSigning = false
+    @State private var showLocalInstall = false
     @State private var previewProject: StudioProject?
 
     var body: some View {
@@ -29,6 +30,12 @@ struct ReyForgeRootV21: View {
                         showSigning = true
                     } label: {
                         Label("Sign IPA", systemImage: "signature")
+                    }
+
+                    Button {
+                        showLocalInstall = true
+                    } label: {
+                        Label("Install Signed IPA", systemImage: "iphone.and.arrow.forward")
                     }
                 } label: {
                     Image(systemName: "hammer.circle.fill")
@@ -59,6 +66,10 @@ struct ReyForgeRootV21: View {
                             }
                         }
                 }
+            }
+            .sheet(isPresented: $showLocalInstall) {
+                ReyForgeLocalInstallSheet()
+                    .environmentObject(signer)
             }
             .sheet(item: $previewProject) { project in
                 StudioLivePreview(project: project)
