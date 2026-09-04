@@ -42,6 +42,9 @@ targets:
       - package: ZIPFoundation
       - package: LlamaSwift
       - package: Zsign
+        product: Zsign
+      - package: Zsign
+        product: zsignc
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.rvmendillo.ipabuilder
