@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import LlamaSwift
 
 struct VibePatch {
@@ -10,6 +11,7 @@ struct VibePatch {
 
 enum VibeModelError: LocalizedError {
     case modelMissing
+    case modelDownload
     case modelLoad
     case contextCreate
     case tokenize
@@ -18,16 +20,109 @@ enum VibeModelError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .modelMissing:
-            return "The bundled SmolLM2 model was not found."
+            return "Qwen2.5-Coder-3B is not installed yet. Download the local coding model first."
+        case .modelDownload:
+            return "The Qwen2.5-Coder-3B model download was incomplete or invalid."
         case .modelLoad:
-            return "SmolLM2 could not be loaded."
+            return "Qwen2.5-Coder-3B could not be loaded on this device."
         case .contextCreate:
-            return "The local model context could not be created."
+            return "The local coding-model context could not be created."
         case .tokenize:
-            return "The prompt could not be tokenized."
+            return "The Swift/iOS prompt could not be tokenized."
         case .decode:
-            return "Local model generation failed."
+            return "Local coding-model generation failed."
         }
+    }
+}
+
+enum LargeCodeModelConfig {
+    static let displayName = "Qwen2.5-Coder-3B-Instruct Q4_K_M"
+    static let fileName = "qwen2.5-coder-3b-instruct-q4_k_m.gguf"
+    static let expectedSizeText = "~2.1 GB"
+    static let minimumValidBytes: UInt64 = 1_500_000_000
+    static let remoteURL = URL(string: "https://huggingface.co/Qwen/Qwen2.5-Coder-3B-Instruct-GGUF/resolve/main/qwen2.5-coder-3b-instruct-q4_k_m.gguf?download=true")!
+
+    static var modelDirectory: URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return base.appendingPathComponent("Models", isDirectory: true)
+    }
+
+    static var modelURL: URL {
+        modelDirectory.appendingPathComponent(fileName)
+    }
+
+    static var isInstalled: Bool {
+        guard FileManager.default.fileExists(atPath: modelURL.path),
+              let attributes = try? FileManager.default.attributesOfItem(atPath: modelURL.path),
+              let size = attributes[.size] as? NSNumber else {
+            return false
+        }
+        return size.uint64Value >= minimumValidBytes
+    }
+}
+
+@MainActor
+final class LargeCodeModelManager: ObservableObject {
+    static let shared = LargeCodeModelManager()
+
+    @Published var isDownloading = false
+    @Published var status = LargeCodeModelConfig.isInstalled
+        ? "3B Swift/iOS coding model installed"
+        : "3B coding model not downloaded"
+    @Published var lastError: String?
+
+    private init() {}
+
+    var isInstalled: Bool { LargeCodeModelConfig.isInstalled }
+    var modelName: String { LargeCodeModelConfig.displayName }
+    var sizeText: String { LargeCodeModelConfig.expectedSizeText }
+
+    func downloadModel() async {
+        guard !isDownloading else { return }
+        isDownloading = true
+        lastError = nil
+        status = "Downloading \(LargeCodeModelConfig.expectedSizeText) coding model…"
+
+        do {
+            let fm = FileManager.default
+            try fm.createDirectory(at: LargeCodeModelConfig.modelDirectory, withIntermediateDirectories: true)
+
+            let (temporaryURL, response) = try await URLSession.shared.download(from: LargeCodeModelConfig.remoteURL)
+            guard let http = response as? HTTPURLResponse,
+                  (200...299).contains(http.statusCode) else {
+                throw VibeModelError.modelDownload
+            }
+
+            let attributes = try fm.attributesOfItem(atPath: temporaryURL.path)
+            let bytes = (attributes[.size] as? NSNumber)?.uint64Value ?? 0
+            guard bytes >= LargeCodeModelConfig.minimumValidBytes else {
+                throw VibeModelError.modelDownload
+            }
+
+            let destination = LargeCodeModelConfig.modelURL
+            try? fm.removeItem(at: destination)
+            try fm.moveItem(at: temporaryURL, to: destination)
+
+            var values = URLResourceValues()
+            values.isExcludedFromBackup = true
+            var mutable = destination
+            try? mutable.setResourceValues(values)
+
+            status = "Qwen2.5-Coder-3B ready · offline"
+        } catch {
+            lastError = error.localizedDescription
+            status = "Model download failed"
+        }
+
+        isDownloading = false
+        objectWillChange.send()
+    }
+
+    func removeModel() {
+        try? FileManager.default.removeItem(at: LargeCodeModelConfig.modelURL)
+        status = "3B coding model not downloaded"
+        lastError = nil
+        objectWillChange.send()
     }
 }
 
@@ -37,13 +132,10 @@ final class LocalVibeModel {
     private init() {}
 
     var modelURL: URL? {
-        Bundle.main.url(
-            forResource: "SmolLM2-360M-Instruct-Q4_K_M",
-            withExtension: "gguf"
-        )
+        LargeCodeModelConfig.isInstalled ? LargeCodeModelConfig.modelURL : nil
     }
 
-    var isBundled: Bool { modelURL != nil }
+    var isInstalled: Bool { modelURL != nil }
 
     func propose(prompt userPrompt: String, project: StudioProject) throws -> String {
         guard let modelURL else {
@@ -60,21 +152,33 @@ final class LocalVibeModel {
         defer { llama_model_free(model) }
 
         var contextParams = llama_context_default_params()
-        contextParams.n_ctx = 1536
-        contextParams.n_batch = 384
+        contextParams.n_ctx = 4096
+        contextParams.n_batch = 512
 
         guard let context = llama_init_from_model(model, contextParams) else {
             throw VibeModelError.contextCreate
         }
         defer { llama_free(context) }
 
-        let current = project.components
-            .map { $0.kind.rawValue }
+        let current = project.components.map { component in
+            let actions = component.actions
+                .map { "\($0.kind.rawValue)(\($0.key)=\($0.value))" }
+                .joined(separator: ",")
+            return "\(component.kind.rawValue){text=\(component.text),detail=\(component.detail),actions=[\(actions)]}"
+        }.joined(separator: "; ")
+
+        let variables = project.variables
+            .map { "\($0.key)=\($0.value)" }
+            .sorted()
             .joined(separator: ", ")
 
         let systemPrompt = """
-        You are ReyForge Local Vibe Coder. Convert requests into a tiny UI patch DSL.
-        Output only DSL lines, with no markdown and no explanation.
+        You are ReyForge Native iOS Coder, a senior Swift 6, SwiftUI, UIKit and iOS 17+ engineer.
+        Reason like an experienced native Apple-platform developer: use standard iOS interaction patterns,
+        accessibility-friendly labels, SF Symbols, sensible forms/navigation, and compact mobile layouts.
+        Translate the requested native iOS feature into ReyForge's editable UI patch DSL.
+
+        Output ONLY valid DSL lines. Never output Markdown, prose, Swift source, comments, or code fences.
 
         ADD|<component kind>|<text>|<x>|<y>|<width>|<height>|<detail>
         ACTION|<last component>|<action kind>|<key>|<value>
@@ -90,22 +194,28 @@ final class LocalVibeModel {
         Action kinds: Show Alert, Navigate, Set Variable, Toggle Variable, Increment,
         Decrement, Open URL, Save Locally, GET Request, Copy Text.
 
-        Canvas size is 390x844. Keep all elements in bounds.
+        Canvas size is 390x844. Keep controls in bounds and avoid overlapping them.
+        Use multiple components when needed to express a complete SwiftUI-style screen.
+        For authentication, forms, settings, dashboards, profiles, networking, and widgets,
+        infer the expected native iOS controls and actions instead of creating placeholder text only.
         """
 
         let prompt = """
         <|im_start|>system
         \(systemPrompt)<|im_end|>
         <|im_start|>user
+        Target: native Swift/SwiftUI iOS 17+
         App: \(project.name)
-        Existing components: \(current)
+        Existing components: \(current.isEmpty ? "none" : current)
+        Variables: \(variables.isEmpty ? "none" : variables)
+        Widget enabled: \(project.widget.enabled)
         Request: \(userPrompt)<|im_end|>
         <|im_start|>assistant
         """
 
         let vocab = llama_model_get_vocab(model)
         let utf8Count = prompt.utf8.count
-        let maxTokenCount = max(256, utf8Count * 2 + 128)
+        let maxTokenCount = max(512, utf8Count * 2 + 256)
         var tokens = [llama_token](repeating: 0, count: maxTokenCount)
 
         let tokenCount = llama_tokenize(
@@ -122,12 +232,12 @@ final class LocalVibeModel {
         }
 
         let promptTokens = Array(tokens.prefix(Int(tokenCount)))
+        guard promptTokens.count < Int(contextParams.n_ctx) - 640 else {
+            throw VibeModelError.tokenize
+        }
+
         let batchCapacity = max(Int32(contextParams.n_batch), Int32(promptTokens.count + 8))
-        var batch = llama_batch_init(
-            batchCapacity,
-            0,
-            1
-        )
+        var batch = llama_batch_init(batchCapacity, 0, 1)
         defer { llama_batch_free(batch) }
 
         batch.n_tokens = Int32(promptTokens.count)
@@ -153,7 +263,7 @@ final class LocalVibeModel {
         var currentPosition = batch.n_tokens
         let vocabSize = Int(llama_vocab_n_tokens(vocab))
 
-        for _ in 0..<260 {
+        for _ in 0..<520 {
             guard let logits = llama_get_logits_ith(context, batch.n_tokens - 1) else {
                 throw VibeModelError.decode
             }
@@ -171,7 +281,7 @@ final class LocalVibeModel {
                 break
             }
 
-            var buffer = [CChar](repeating: 0, count: 128)
+            var buffer = [CChar](repeating: 0, count: 256)
             let length = llama_token_to_piece(
                 vocab,
                 nextToken,
@@ -280,7 +390,7 @@ enum VibePatchParser {
         }
 
         return VibePatch(
-            summary: "Local SmolLM2 proposed \(added.count) component change(s).",
+            summary: "Qwen2.5-Coder-3B proposed \(added.count) native component change(s).",
             components: added,
             widget: widget,
             variableUpdates: variables
