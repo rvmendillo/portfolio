@@ -122,8 +122,9 @@ final class LocalVibeModel {
         }
 
         let promptTokens = Array(tokens.prefix(Int(tokenCount)))
+        let batchCapacity = max(Int32(contextParams.n_batch), Int32(promptTokens.count + 8))
         var batch = llama_batch_init(
-            max(contextParams.n_batch, Int32(promptTokens.count + 8)),
+            batchCapacity,
             0,
             1
         )
