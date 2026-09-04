@@ -84,6 +84,7 @@ jobs:
       - name: Patch Zsign provisioning and callback behavior
         working-directory: ipa-builder-build
         run: |
+          chmod u+w build/SourcePackages/checkouts/Zsign-Package/src/zsign.mm
           python3 - <<'PY'
           from pathlib import Path
           p = Path('build/SourcePackages/checkouts/Zsign-Package/src/zsign.mm')
