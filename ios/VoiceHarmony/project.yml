@@ -19,12 +19,12 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.rvmendillo.voxharmony
         PRODUCT_NAME: VoxHarmony
         PRODUCT_MODULE_NAME: VoxHarmony
-        MARKETING_VERSION: 0.2.0
-        CURRENT_PROJECT_VERSION: 2
+        MARKETING_VERSION: 0.3.0
+        CURRENT_PROJECT_VERSION: 3
         TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: VoxHarmony
-        INFOPLIST_KEY_NSMicrophoneUsageDescription: VoxHarmony uses the microphone to record your singing voice for on-device melody, key, scale, chord and harmony processing.
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: VoxHarmony uses the microphone to record your singing voice for on-device AI melody transcription, key, scale, chord and harmony processing.
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
         CODE_SIGN_STYLE: Automatic
     scheme:
