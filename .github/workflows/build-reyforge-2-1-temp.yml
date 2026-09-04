@@ -43,6 +43,7 @@ jobs:
       - name: Patch Zsign compatibility
         working-directory: ipa-builder-build
         run: |
+          chmod u+w build/SourcePackages/checkouts/Zsign-Package/src/zsign.mm
           python3 -c "from pathlib import Path; p=Path('build/SourcePackages/checkouts/Zsign-Package/src/zsign.mm'); s=p.read_text(); s=s.replace('bForce, bWeakInject, bEnableCache, excludeprovion);','bForce, bWeakInject, bEnableCache, !excludeprovion);',1); s=s.replace('completionHandler(bRet, signError);','if (completionHandler) { completionHandler(bRet, signError); }',1); p.write_text(s)"
 
       - name: Build ReyForge 2.6 unsigned
