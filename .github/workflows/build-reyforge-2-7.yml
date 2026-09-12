@@ -19,6 +19,18 @@ jobs:
         run: |
           swiftc -swift-version 6 AppIdentity.swift InstallRequest.swift tests/IdentityRegression.swift -o /tmp/reyforge-regressions
           /tmp/reyforge-regressions
+      - name: Loopback installer integration
+        working-directory: ipa-builder-build
+        run: |
+          python3 - <<'PYTEST'
+          from pathlib import Path
+          source = Path("LocalhostInstaller.swift").read_text()
+          core = source[source.index("private struct InstallContext"):source.index("struct ReyForgeLocalInstallSheet")]
+          tests = Path("tests/LocalHTTPRegression.swift").read_text()
+          Path("/tmp/reyforge-http-regression.swift").write_text("import Foundation\nimport Network\n" + core + tests)
+          PYTEST
+          swiftc -swift-version 6 -parse-as-library AppIdentity.swift InstallRequest.swift /tmp/reyforge-http-regression.swift -o /tmp/reyforge-http-regression
+          /tmp/reyforge-http-regression
       - name: Install build tools
         run: |
           brew install xcodegen

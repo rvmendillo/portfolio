@@ -561,11 +561,7 @@ final class BuiltInSigningManager: ObservableObject {
     }
 
     nonisolated private static func replacingIdentifierPrefix(_ value: String, old: String, new: String) -> String {
-        if value == old { return new }
-        if value.hasPrefix(old + ".") {
-            return new + value.dropFirst(old.count)
-        }
-        return value
+        AppIdentity.replacingPrefix(value, old: old, new: new)
     }
 }
 
