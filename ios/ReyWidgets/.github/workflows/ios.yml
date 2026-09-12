@@ -1,0 +1,26 @@
+name: iOS validation
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show selected Xcode
+        run: xcodebuild -version
+      - name: Build simulator app and widget extension
+        run: bash Scripts/build.sh build
+      - name: Run XCTest and UI tests
+        run: bash Scripts/build.sh test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-test-results
+          path: build/*.xcresult
+          if-no-files-found: ignore

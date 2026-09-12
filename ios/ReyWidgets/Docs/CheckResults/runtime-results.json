@@ -1,0 +1,35 @@
+{
+  "environment": "Node.js with DOM test double; no browser rendering",
+  "results": [
+    {
+      "template": "made-of-possibility",
+      "size": "small",
+      "status": "PASS"
+    },
+    {
+      "template": "made-of-possibility",
+      "size": "medium",
+      "status": "PASS"
+    },
+    {
+      "template": "made-of-possibility",
+      "size": "large",
+      "status": "PASS"
+    },
+    {
+      "template": "api-canvas",
+      "size": "small",
+      "status": "PASS"
+    },
+    {
+      "template": "api-canvas",
+      "size": "medium",
+      "status": "PASS"
+    },
+    {
+      "template": "api-canvas",
+      "size": "large",
+      "status": "PASS"
+    }
+  ]
+}

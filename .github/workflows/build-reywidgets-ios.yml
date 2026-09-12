@@ -1,0 +1,90 @@
+name: Build ReyWidgets iOS
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, 'codex/reywidgets-studio']
+    paths:
+      - 'ios/ReyWidgets/**'
+      - '.github/workflows/build-reywidgets-ios.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: reywidgets-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: ios/ReyWidgets
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Select an installed Xcode 26 or newer
+        run: |
+          python3 - <<'PY'
+          import glob, os, plistlib
+          from pathlib import Path
+          candidates = []
+          for info in glob.glob('/Applications/Xcode*.app/Contents/Info.plist'):
+              with open(info, 'rb') as f:
+                  version = plistlib.load(f).get('CFBundleShortVersionString', '0')
+              try:
+                  parts = tuple(int(x) for x in version.split('.'))
+              except ValueError:
+                  continue
+              if parts[0] >= 26:
+                  candidates.append((parts, str(Path(info).parent / 'Developer'), version))
+          if not candidates:
+              raise SystemExit('This runner has no Xcode 26+. Select a runner image that includes it.')
+          _, developer, version = max(candidates)
+          with open(os.environ['GITHUB_ENV'], 'a') as f:
+              f.write('DEVELOPER_DIR=' + developer + '\n')
+          print('Selected Xcode', version)
+          PY
+
+      - name: Build simulator app and widget extension
+        run: bash Scripts/build.sh build
+
+      - name: Build unsigned iPhone app and extension
+        run: |
+          xcodebuild -project ReyWidgets.xcodeproj -scheme ReyWidgets \
+            -configuration Release -destination 'generic/platform=iOS' \
+            -derivedDataPath build/DeviceDerivedData \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+
+      - name: Package unsigned IPA with widget extension
+        run: |
+          mkdir -p build/Package/Payload
+          cp -R build/DeviceDerivedData/Build/Products/Release-iphoneos/ReyWidgets.app build/Package/Payload/
+          test -d build/Package/Payload/ReyWidgets.app/PlugIns/ReyWidgetsExtension.appex
+          cd build/Package
+          /usr/bin/zip -qry ../ReyWidgets-unsigned.ipa Payload
+          /usr/bin/unzip -t ../ReyWidgets-unsigned.ipa
+
+      - name: Run native unit and UI tests
+        run: bash Scripts/build.sh test
+
+      - name: Upload unsigned IPA
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ReyWidgets-unsigned-IPA
+          path: ios/ReyWidgets/build/ReyWidgets-unsigned.ipa
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ReyWidgets-test-results
+          path: ios/ReyWidgets/build/*.xcresult
+          if-no-files-found: ignore
+          retention-days: 14

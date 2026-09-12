@@ -1,0 +1,38 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<style>html,body{width:100%;height:100%;margin:0;overflow:hidden;box-sizing:border-box}*{box-sizing:inherit}</style>
+<style>body{font-family:system-ui;background:#191e2b;color:#c6d8f4}
+main{height:100%;padding:20px;display:flex;flex-direction:column;justify-content:space-between}
+header,footer{font:9px ui-monospace,monospace;letter-spacing:1px}
+.reading{display:flex;align-items:baseline;gap:8px;color:#afff8b}strong{font-size:66px;font-weight:500;letter-spacing:-4px}
+footer{font-size:8px;opacity:.7}@media(min-height:250px){strong{font-size:128px}}</style>
+<script>
+window.__rwError = null;
+window.addEventListener('error',e=>{window.__rwError=e.message;});
+window.addEventListener('unhandledrejection',e=>{window.__rwError=String(e.reason);});
+window.widget = {
+  data: JSON.parse(new TextDecoder().decode(Uint8Array.from(atob('eyJjdXJyZW50IjogeyJ0ZW1wZXJhdHVyZV8ybSI6IDI5LCAiYXBwYXJlbnRfdGVtcGVyYXR1cmUiOiAzMywgIndpbmRfc3BlZWRfMTBtIjogMTJ9fQ=='),c=>c.charCodeAt(0)))),
+  size: 'medium', width: 364, height: 170,
+  ready: Promise.resolve(),
+  get(pointer, fallback='—') {
+    if (pointer === '') return this.data;
+    if (!pointer.startsWith('/')) return fallback;
+    let node = this.data;
+    for (const key of pointer.slice(1).split('/').map(k=>k.replace(/~1/g,'/').replace(/~0/g,'~'))) {
+      if (node == null || !Object.prototype.hasOwnProperty.call(Object(node),key)) return fallback;
+      node = node[key];
+    }
+    return node == null ? fallback : node;
+  }
+};
+document.addEventListener('DOMContentLoaded',()=>{
+  for (const el of document.querySelectorAll('[data-bind]')) {
+    el.textContent = String(widget.get(el.getAttribute('data-bind')));
+  }
+});
+</script></head><body><main><header>MANILA / WEATHER</header><div class="reading"><strong id="temp"></strong><span>°C</span></div><footer>FEELS LIKE <b data-bind="/current/apparent_temperature"></b>° · OPEN-METEO</footer></main>
+<script>document.addEventListener('DOMContentLoaded',()=>{
+document.getElementById('temp').textContent = widget.get('/current/temperature_2m');
+});</script>
+</body></html>
