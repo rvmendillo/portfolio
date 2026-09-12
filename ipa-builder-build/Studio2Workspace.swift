@@ -29,7 +29,7 @@ struct Studio2View: View {
     @EnvironmentObject private var github: GitHubBuildManager
 
     @State private var leftPanel: StudioPanel = .library
-    @State private var bottomPanel: StudioPanel? = .code
+    @State private var bottomPanel: StudioPanel?
     @State private var showInspector = false
     @State private var showLeftPanel = false
     @State private var showGitHub = false
@@ -200,11 +200,18 @@ struct Studio2View: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        showNewProject = true
-                    } label: {
-                        Image(systemName: "plus")
-                    }
+                    Menu {
+                        ForEach(store.projects) { project in
+                            Button(project.name) {
+                                store.selectedID = project.id
+                                store.selectedComponentID = project.components.first?.id
+                            }
+                        }
+                        Divider()
+                        Button("New Project", systemImage: "plus") { showNewProject = true }
+                        Button("Duplicate Project", systemImage: "plus.square.on.square") { store.duplicateCurrent() }
+                    } label: { Image(systemName: "folder") }
+                    .accessibilityLabel("Projects")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -565,6 +572,7 @@ private struct MovableStudioComponent: View {
 
     var body: some View {
         StudioComponentRenderer(component: component)
+            .allowsHitTesting(false)
             .frame(width: component.width, height: component.height)
             .background(isSelected ? Color.indigo.opacity(0.06) : Color.clear)
             .overlay {

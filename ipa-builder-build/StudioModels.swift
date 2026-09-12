@@ -76,7 +76,7 @@ enum StudioTemplate:String,CaseIterable,Identifiable {
     case blank="Blank", login="Login", dashboard="Dashboard", settings="Settings", profile="Profile", commerce="Commerce", componentGallery="Native Component Gallery", widgetStarter="Widget Starter"
     var id:String{rawValue}; var icon:String { switch self { case .blank:return "doc"; case .login:return "person.badge.key"; case .dashboard:return "rectangle.3.group"; case .settings:return "gearshape"; case .profile:return "person.crop.circle"; case .commerce:return "cart"; case .componentGallery:return "square.grid.3x3"; case .widgetStarter:return "square.grid.2x2" } }
     func project(name:String?=nil)->StudioProject {
-        let projectName=name ?? rawValue; let slug=projectName.lowercased().filter{$0.isLetter||$0.isNumber}; var cs:[StudioComponent]=[]
+        let projectName=name ?? rawValue; var cs:[StudioComponent]=[]
         func add(_ k:StudioComponentKind,_ t:String,_ x:Double,_ y:Double,_ w:Double?=nil,_ h:Double?=nil){var c=StudioComponent.make(k,x:x,y:y);c.text=t;if let w{c.width=w};if let h{c.height=h};cs.append(c)}
         switch self {
         case .blank:add(.text,"Start building",195,100,260,50)
@@ -92,7 +92,8 @@ enum StudioTemplate:String,CaseIterable,Identifiable {
         case .widgetStarter:add(.text,"Widget Companion",195,85,300,50);add(.symbol,"sparkles",195,190,120,120);add(.textField,"Widget title",195,300,300,52);add(.button,"Update Widget",195,385,300,52)
         }
         var w=StudioWidgetConfig(); if self == .widgetStarter { w.enabled=true;w.displayName="ReyForge Widget";w.title="ReyForge";w.subtitle="Built visually on iPhone" }
-        return StudioProject(name:projectName,bundleIdentifier:"com.rvmendillo.\(slug.isEmpty ? "app":slug)",components:cs,widget:w)
+        let projectID = UUID()
+        return StudioProject(id:projectID,name:projectName,bundleIdentifier:AppIdentity.projectIdentifier(name:projectName,id:projectID),components:cs,widget:w)
     }
 }
 
@@ -103,7 +104,7 @@ enum StudioTemplate:String,CaseIterable,Identifiable {
     var selected:StudioProject?{guard let i=selectedIndex else{return nil};return projects[i]}
     var selectedComponent:StudioComponent?{guard let p=selected,let id=selectedComponentID else{return nil};return p.components.first{$0.id==id}}
     func newProject(template:StudioTemplate,name:String?=nil){let p=template.project(name:name);projects.append(p);selectedID=p.id;selectedComponentID=p.components.first?.id;save()}
-    func duplicateCurrent(){guard var p=selected else{return};p.id=UUID();p.name+=" Copy";p.bundleIdentifier+=".copy";p.components=p.components.map{old in var c=old;c.id=UUID();c.actions=c.actions.map{a in var x=a;x.id=UUID();return x};return c};projects.append(p);selectedID=p.id;selectedComponentID=p.components.first?.id;save()}
+    func duplicateCurrent(){guard var p=selected else{return};p.id=UUID();p.name+=" Copy";p.bundleIdentifier=AppIdentity.projectIdentifier(name:p.name,id:p.id);p.components=p.components.map{old in var c=old;c.id=UUID();c.actions=c.actions.map{a in var x=a;x.id=UUID();return x};return c};projects.append(p);selectedID=p.id;selectedComponentID=p.components.first?.id;save()}
     func add(_ kind:StudioComponentKind,at point:CGPoint?=nil){guard let i=selectedIndex else{return};let n=projects[i].components.count;let p=point ?? CGPoint(x:195,y:90+Double(n%10)*64);var c=StudioComponent.make(kind,x:p.x,y:p.y);c.x=min(max(c.width/2,c.x),390-c.width/2);c.y=max(c.height/2,c.y);projects[i].components.append(c);projects[i].modifiedAt=Date();selectedComponentID=c.id;save()}
     func updateComponent(_ c:StudioComponent){guard let i=selectedIndex,let j=projects[i].components.firstIndex(where:{$0.id==c.id})else{return};projects[i].components[j]=c;projects[i].modifiedAt=Date();save()}
     func moveSelected(to p:CGPoint){guard var c=selectedComponent else{return};c.x=min(max(c.width/2,p.x),390-c.width/2);c.y=max(c.height/2,p.y);updateComponent(c)}
