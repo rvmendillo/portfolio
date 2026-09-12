@@ -13,6 +13,7 @@ on:
 jobs:
   build:
     runs-on: macos-15
+    timeout-minutes: 40
     defaults:
       run:
         working-directory: ios-native
@@ -43,10 +44,19 @@ jobs:
       - name: Generate native Xcode project
         run: xcodegen generate
 
-      - name: Test real Python and bundled local model on iOS Simulator
+      - name: Test native navigation, IDE, Python and bundled local model
         run: |
-          SIMULATOR_ID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for devices in d["devices"].values() for x in devices if x["name"].startswith("iPhone")))')
-          xcodebuild test -project ReyPortfolioNative.xcodeproj -scheme ReyPortfolioNative -destination "id=$SIMULATOR_ID" -derivedDataPath build-simulator -resultBundlePath native-tests.xcresult CODE_SIGNING_ALLOWED=NO
+          SIMULATOR_ID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); phones=[x for devices in d["devices"].values() for x in devices if x["name"].startswith("iPhone")]; print(next((x["udid"] for x in phones if x["name"]=="iPhone 16 Plus"), phones[0]["udid"]))')
+          xcodebuild test -project ReyPortfolioNative.xcodeproj -scheme ReyPortfolioNative -destination "id=$SIMULATOR_ID" -parallel-testing-enabled NO -derivedDataPath build-simulator -resultBundlePath native-tests.xcresult CODE_SIGNING_ALLOWED=NO
+
+      - name: Export native screenshots and test summary
+        if: always()
+        run: |
+          if [ -d native-tests.xcresult ]; then
+            mkdir -p native-test-evidence
+            xcrun xcresulttool export attachments --path native-tests.xcresult --output-path native-test-evidence
+            xcrun xcresulttool get test-results summary --path native-tests.xcresult > native-test-evidence/summary.json
+          fi
 
       - name: Build unsigned native application
         run: |
@@ -86,5 +96,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ReyOS-native-test-results
-          path: ios-native/native-tests.xcresult
+          path: |
+            ios-native/native-tests.xcresult
+            ios-native/native-test-evidence
           if-no-files-found: ignore

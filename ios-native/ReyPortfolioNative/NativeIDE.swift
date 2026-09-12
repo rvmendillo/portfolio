@@ -27,11 +27,11 @@ struct NativeIDEView:View {
     var body:some View {
         VStack(spacing:0){
             ScrollView(.horizontal,showsIndicators:false){HStack(spacing:9){
-                Menu {ForEach(workspace.files){file in Button(file.name){workspace.selected=file.name;selection=NSRange(location:0,length:0)}}}label:{Label(workspace.selected,systemImage:"folder")}
+                Menu {ForEach(workspace.files){file in Button(file.name){workspace.selected=file.name;selection=NSRange(location:0,length:0)}}}label:{Label(workspace.selected,systemImage:"folder")}.accessibilityIdentifier("ide-files")
                 Button{addFile=true}label:{Image(systemName:"doc.badge.plus")}.accessibilityLabel("New file")
                 Button{run()}label:{Label("Run",systemImage:"play.fill")}.disabled(running).accessibilityIdentifier("ide-run")
                 Button{PythonRuntime.shared.stop()}label:{Image(systemName:"stop.fill")}.disabled(!running).accessibilityLabel("Stop program")
-                Button{showAI=true}label:{Label("AI",systemImage:"sparkles")}
+                Button{showAI=true}label:{Label("AI",systemImage:"sparkles")}.accessibilityIdentifier("ide-ai")
                 Menu {
                     Button("Export current file"){document=CodeDocument(text:workspace.text);exportName=workspace.selected;showExport=true}
                     Button("Export project"){let object:[String:Any]=["format":"rey-project/v1","files":workspace.allFiles];if let data=try? JSONSerialization.data(withJSONObject:object,options:.prettyPrinted){document=CodeDocument(text:String(decoding:data,as:UTF8.self));exportName="workspace.rey.json";showExport=true}}
@@ -43,7 +43,7 @@ struct NativeIDEView:View {
             SourceCodeEditor(text:Binding(get:{workspace.text},set:{workspace.text=$0}),selection:$selection).accessibilityIdentifier("code-editor")
             ScrollView(.horizontal,showsIndicators:false){HStack{ForEach(completions,id:\.self){word in Button(word){insert(word)}.font(.caption.monospaced()).buttonStyle(.bordered)}}.padding(7)}
             TextField("Program input (one answer per line)",text:$input,axis:.vertical).lineLimit(1...3).font(.caption.monospaced()).textInputAutocapitalization(.never).autocorrectionDisabled().padding(10).background(.white.opacity(0.05))
-            ScrollView{Text(output).font(.system(.caption,design:.monospaced)).textSelection(.enabled).frame(maxWidth:.infinity,alignment:.leading).padding(12)}.frame(height:145).background(.black.opacity(0.25)).accessibilityIdentifier("program-output")
+            ScrollView{Text(output).font(.system(.caption,design:.monospaced)).textSelection(.enabled).frame(maxWidth:.infinity,alignment:.leading).padding(12).accessibilityIdentifier("program-output")}.frame(height:145).background(.black.opacity(0.25))
         }
         .alert("New file",isPresented:$addFile){TextField("helpers.py",text:$newName);Button("Create"){do{try workspace.add(newName);newName=""}catch{output=error.localizedDescription}};Button("Cancel",role:.cancel){}}message:{Text("Files are saved on this device.")}
         .confirmationDialog("Delete \(workspace.selected)?",isPresented:$deleteFile){Button("Delete file",role:.destructive){workspace.removeCurrent()}}
@@ -69,6 +69,7 @@ struct NativeIDEView:View {
     }
     private func run(){
         guard !running else{return}
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),to:nil,from:nil,for:nil)
         guard workspace.selected.hasSuffix(".py") else{output="Export this file for its language toolchain. Python files execute directly on this device.";return}
         running=true;output="Running Python…";let source=workspace.text,files=workspace.allFiles,stdin=input
         Task{do{let result=try await PythonRuntime.shared.run(source,files:files,input:stdin);output=result.output+"\n\nExit code: \(result.exitCode)"}catch{output=error.localizedDescription};running=false}
@@ -91,7 +92,7 @@ struct SourceCodeEditor:UIViewRepresentable {
         let view=UITextView();view.delegate=context.coordinator;view.text=text;view.backgroundColor=UIColor(red:0.03,green:0.065,blue:0.11,alpha:1)
         view.textColor = .white;view.font = .monospacedSystemFont(ofSize:14,weight:.regular);view.autocorrectionType = .no;view.autocapitalizationType = .none
         view.smartQuotesType = .no;view.smartDashesType = .no;view.smartInsertDeleteType = .no;view.textContainerInset=UIEdgeInsets(top:12,left:8,bottom:12,right:8)
-        view.keyboardDismissMode = .interactive;view.isFindInteractionEnabled=true;view.accessibilityLabel="Source code"
+        view.keyboardDismissMode = .interactive;view.isFindInteractionEnabled=true;view.accessibilityLabel="Source code";view.accessibilityIdentifier="code-editor"
         context.coordinator.highlight(view);return view
     }
     func updateUIView(_ view:UITextView,context:Context){context.coordinator.parent=self;if view.text != text{view.text=text;context.coordinator.highlight(view)};let length=(view.text as NSString).length;let range=NSRange(location:min(selection.location,length),length:min(selection.length,max(0,length-selection.location)));if view.selectedRange != range{view.selectedRange=range}}
@@ -112,6 +113,7 @@ struct SourceCodeEditor:UIViewRepresentable {
 private struct AIMessage:Identifiable {let id=UUID();let user:Bool;var text:String}
 struct NativeAssistantView:View {
     @EnvironmentObject private var theme:ThemeStore
+    @Environment(\.dismiss) private var dismiss
     @ObservedObject private var model=LocalModelStore.shared
     var sourceName="main.py"
     var source=""
@@ -126,21 +128,23 @@ struct NativeAssistantView:View {
     @State private var ownsGeneration=false
     var body:some View {
         VStack(spacing:10){
-            HStack{Label("Rey Local AI",systemImage:"sparkles").font(.headline);Spacer();Button("Load model"){Task{do{try await model.load()}catch{self.error=error.localizedDescription}}}.disabled(model.state=="loading"||model.busy);Button("Unload"){model.unload()}.disabled(model.busy||model.state=="loading")}.padding(.horizontal)
-            Text(model.status).font(.caption).foregroundStyle(theme.secondary).frame(maxWidth:.infinity,alignment:.leading).padding(.horizontal)
+            HStack{Label("Rey Local AI",systemImage:"sparkles").font(.headline);Spacer();if onApply != nil{Button("Close"){dismiss()}.accessibilityLabel("Close assistant").accessibilityIdentifier("ai-close")}}.padding(.horizontal)
+            HStack{Button("Load model"){Task{do{try await model.load()}catch{self.error=error.localizedDescription}}}.disabled(model.state=="loading"||model.busy).accessibilityIdentifier("ai-load");Button("Unload"){model.unload()}.disabled(model.busy||model.state=="loading").accessibilityIdentifier("ai-unload");Spacer()}.padding(.horizontal)
+            Text(model.status).font(.caption).foregroundStyle(theme.secondary).frame(maxWidth:.infinity,alignment:.leading).padding(.horizontal).accessibilityIdentifier("ai-model-status")
             Text("The coding model is bundled. Prompts and code stay on this device.").font(.caption).foregroundStyle(theme.secondary).padding(.horizontal)
             if !error.isEmpty{Text(error).font(.caption).foregroundStyle(.red).padding(.horizontal)}
             ScrollViewReader{proxy in ScrollView{LazyVStack(alignment:.leading,spacing:12){ForEach(messages){message in Text(message.text).font(message.user ? .body : .system(.subheadline,design:.monospaced)).textSelection(.enabled).padding(12).frame(maxWidth:.infinity,alignment:.leading).background(message.user ? theme.accent.opacity(0.18) : .white.opacity(0.05),in:RoundedRectangle(cornerRadius:12)).id(message.id)}}.padding(12)}.onChange(of:messages.last?.text){_ in if let last=messages.last{proxy.scrollTo(last.id,anchor:.bottom)}}}
-            if proposal != nil && onApply != nil{Button("Review proposed edit"){reviewing=true}.buttonStyle(.borderedProminent).tint(theme.accent)}
+            if proposal != nil && onApply != nil{Button("Review proposed edit"){reviewing=true}.buttonStyle(.borderedProminent).tint(theme.accent).accessibilityIdentifier("ai-review")}
             if !source.isEmpty{Toggle("Include \(sourceName)",isOn:$includeSource).font(.caption).padding(.horizontal)}
-            HStack{TextField("Ask about your code…",text:$input,axis:.vertical).lineLimit(1...5).textInputAutocapitalization(.sentences);Button("Send"){ask()}.disabled(model.state != "ready"||model.busy||input.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty);Button("Stop"){model.stop()}.disabled(!model.busy)}.padding(12).background(.ultraThinMaterial,in:RoundedRectangle(cornerRadius:14)).padding(.horizontal)
+            HStack{TextField("Ask about your code…",text:$input,axis:.vertical).lineLimit(1...5).textInputAutocapitalization(.sentences).accessibilityIdentifier("ai-prompt");Button("Send"){ask()}.disabled(model.state != "ready"||model.busy||input.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty).accessibilityIdentifier("ai-send");Button("Stop"){model.stop()}.disabled(!model.busy).accessibilityIdentifier("ai-stop")}.padding(12).background(.ultraThinMaterial,in:RoundedRectangle(cornerRadius:14)).padding(.horizontal)
             Button("New conversation"){messages=[];history=[];proposal=nil;error=""}.font(.caption).disabled(model.busy)
         }.padding(.vertical,16).background(theme.background)
-        .sheet(isPresented:$reviewing){NavigationStack{ScrollView{VStack(alignment:.leading,spacing:12){Text("Current file").font(.headline);Text(source).font(.caption.monospaced());Text("Proposed file").font(.headline);Text(proposal ?? "").font(.caption.monospaced());Button("Apply replacement"){do{try onApply?(sourceName,source,proposal ?? "");reviewing=false;proposal=nil}catch{self.error=error.localizedDescription;reviewing=false}}.buttonStyle(.borderedProminent)}.textSelection(.enabled).padding()}.navigationTitle(sourceName).toolbar{Button("Close"){reviewing=false}}}}
+        .sheet(isPresented:$reviewing){NavigationStack{ScrollView{VStack(alignment:.leading,spacing:12){Text("Current file").font(.headline);Text(source).font(.caption.monospaced());Text("Proposed file").font(.headline);Text(proposal ?? "").font(.caption.monospaced());Button("Apply replacement"){do{try onApply?(sourceName,source,proposal ?? "");reviewing=false;proposal=nil}catch{self.error=error.localizedDescription;reviewing=false}}.buttonStyle(.borderedProminent).accessibilityIdentifier("ai-apply")}.textSelection(.enabled).padding()}.navigationTitle(sourceName).toolbar{Button("Close"){reviewing=false}}}}
         .onDisappear{if ownsGeneration{model.stop()}}
     }
     private func ask(){
         let query=String(input.prefix(5000)).trimmingCharacters(in:.whitespacesAndNewlines);guard !query.isEmpty && !model.busy else{return}
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),to:nil,from:nil,for:nil)
         input="";error="";proposal=nil;ownsGeneration=true
         let context=includeSource && !source.isEmpty ? "\nCurrent file \(sourceName):\n```\n\(source.prefix(9000))\n```" : ""
         let content=context+"\n\nUser request: "+query;messages.append(AIMessage(user:true,text:query));let reply=AIMessage(user:false,text:"Thinking locally…");messages.append(reply)

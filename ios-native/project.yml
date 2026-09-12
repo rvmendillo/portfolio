@@ -65,6 +65,17 @@ targets:
       base:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: com.reyvictor.portfolioos.native.tests
+  ReyPortfolioNativeUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests
+    dependencies:
+      - target: ReyPortfolioNative
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.reyvictor.portfolioos.native.uitests
 schemes:
   ReyPortfolioNative:
     build:
@@ -73,3 +84,4 @@ schemes:
     test:
       targets:
         - ReyPortfolioNativeTests
+        - ReyPortfolioNativeUITests
