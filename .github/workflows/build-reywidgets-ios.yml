@@ -49,8 +49,17 @@ jobs:
           print('Selected Xcode', version)
           PY
 
-      - name: Build simulator app and widget extension
-        run: bash Scripts/build.sh build
+      - name: Inspect runtime package platforms
+        run: |
+          xcodebuild -project ReyWidgets.xcodeproj -scheme ReyWidgets -derivedDataPath build/DeviceDerivedData -resolvePackageDependencies
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          import plistlib
+          for info in Path('build/DeviceDerivedData/SourcePackages/artifacts').rglob('llama.xcframework/Info.plist'):
+              print('Runtime XCFramework:', info)
+              with info.open('rb') as handle:
+                  print(plistlib.load(handle))
+          PYCODE
 
       - name: Build unsigned iPhone app and extension
         run: |
@@ -58,6 +67,9 @@ jobs:
             -configuration Release -destination 'generic/platform=iOS' \
             -derivedDataPath build/DeviceDerivedData \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+
+      - name: Build simulator app and widget extension
+        run: bash Scripts/build.sh build
 
       - name: Package unsigned IPA with widget extension
         run: |
