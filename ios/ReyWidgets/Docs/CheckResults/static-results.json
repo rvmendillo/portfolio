@@ -1,0 +1,6 @@
+[
+  "Matching App Group and Keychain entitlements; plist parsing",
+  "Four Xcode targets, embedded extension, shared scheme and pinned runtime reference",
+  "Swift syntax parse: 17 files; no errors (not type checking)",
+  "Six HTML fixtures extracted from actual app templates and runtime"
+]

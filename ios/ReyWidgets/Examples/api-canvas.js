@@ -1,0 +1,1 @@
+document.getElementById('temp').textContent = widget.get('/current/temperature_2m');
