@@ -134,6 +134,11 @@ final class GitHubBuildManager: ObservableObject {
     }
 
     func build(project: StudioProject) async {
+        guard !isBuilding else { return }
+        guard AppIdentity.isValid(project.bundleIdentifier) else {
+            lastError = "Enter a valid project bundle identifier before building."
+            return
+        }
         guard hasCredential else {
             lastError = "Save a GitHub access token first."
             return

@@ -31,6 +31,8 @@ targets:
       - path: QuickVibe.swift
       - path: PreviewRuntime.swift
       - path: SigningVault.swift
+      - path: AppIdentity.swift
+      - path: InstallRequest.swift
       - path: LocalhostInstaller.swift
       - path: ReyForgeRootV21.swift
       - path: GitHubBuildManager.swift
@@ -43,10 +45,10 @@ targets:
         product: ZsignSwift
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.rvmendillo.ipabuilder
+        PRODUCT_BUNDLE_IDENTIFIER: com.rvmendillo.reyforge
         PRODUCT_NAME: ReyForge
-        MARKETING_VERSION: "2.6"
-        CURRENT_PROJECT_VERSION: "11"
+        MARKETING_VERSION: "2.7"
+        CURRENT_PROJECT_VERSION: "12"
         TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: "ReyForge"

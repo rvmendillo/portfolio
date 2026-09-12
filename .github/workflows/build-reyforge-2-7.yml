@@ -1,0 +1,105 @@
+name: Build ReyForge 2.7
+on:
+  push:
+    branches: [codex/reyforge-2-7-rebuild]
+    paths:
+      - ipa-builder-build/**
+      - .github/workflows/build-reyforge-2-7.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v6
+      - name: Identity and installation regressions
+        working-directory: ipa-builder-build
+        run: |
+          swiftc -swift-version 6 AppIdentity.swift InstallRequest.swift tests/IdentityRegression.swift -o /tmp/reyforge-regressions
+          /tmp/reyforge-regressions
+      - name: Loopback installer integration
+        working-directory: ipa-builder-build
+        run: |
+          python3 - <<'PYTEST'
+          from pathlib import Path
+          source = Path("LocalhostInstaller.swift").read_text()
+          core = source[source.index("private struct InstallContext"):source.index("struct ReyForgeLocalInstallSheet")]
+          tests = Path("tests/LocalHTTPRegression.swift").read_text()
+          Path("/tmp/reyforge-http-regression.swift").write_text("import Foundation\nimport Network\n" + core + tests)
+          PYTEST
+          swiftc -swift-version 6 -parse-as-library AppIdentity.swift InstallRequest.swift /tmp/reyforge-http-regression.swift -o /tmp/reyforge-http-regression
+          /tmp/reyforge-http-regression
+      - name: Install build tools
+        run: |
+          brew install xcodegen
+          python3 -m venv /tmp/reyforge-icon-venv
+          /tmp/reyforge-icon-venv/bin/python -m pip install --quiet pillow
+      - name: Generate project
+        working-directory: ipa-builder-build
+        run: |
+          /tmp/reyforge-icon-venv/bin/python generate_ci_icon.py
+          xcodegen generate
+          xcodebuild -resolvePackageDependencies -project IPABuilder.xcodeproj -scheme IPABuilder -derivedDataPath build
+      - name: Apply verified Zsign compatibility fixes
+        working-directory: ipa-builder-build
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("build/SourcePackages/checkouts/Zsign-Package/src/zsign.mm")
+          p.chmod(p.stat().st_mode | 0o200)
+          s = p.read_text()
+          old = "bForce, bWeakInject, bEnableCache, excludeprovion);"
+          assert old in s
+          s = s.replace(old, "bForce, bWeakInject, bEnableCache, !excludeprovion);", 1)
+          old = "completionHandler(bRet, signError);"
+          assert old in s
+          s = s.replace(old, "if (completionHandler) { completionHandler(bRet, signError); }", 1)
+          p.write_text(s)
+          PY
+      - name: Build native iOS app
+        working-directory: ipa-builder-build
+        run: |
+          set -o pipefail
+          xcodebuild -project IPABuilder.xcodeproj -scheme IPABuilder -configuration Release -sdk iphoneos -derivedDataPath build -disableAutomaticPackageResolution CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | tee xcodebuild.log
+      - name: Validate and package
+        working-directory: ipa-builder-build
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import plistlib
+          app = Path("build/Build/Products/Release-iphoneos/ReyForge.app")
+          p = plistlib.loads((app / "Info.plist").read_bytes())
+          assert p["CFBundleIdentifier"] == "com.rvmendillo.reyforge"
+          assert p["CFBundleShortVersionString"] == "2.7"
+          assert p["CFBundleVersion"] == "12"
+          assert not p.get("CFBundleURLTypes"), "Do not claim Spotify or another app's URL scheme"
+          assert (app / p["CFBundleExecutable"]).is_file()
+          assert not list(app.rglob("*.p12")), "No signing keys in build artifacts"
+          assert not (app / "embedded.mobileprovision").exists(), "Do not reuse the shared fixed profile"
+          print("Verified dedicated app identity and credential-free package")
+          PY
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/ReyForge.app Payload/
+          ditto -c -k --sequesterRsrc --keepParent Payload ReyForge-2.7-unsigned.ipa
+          unzip -t ReyForge-2.7-unsigned.ipa
+      - uses: actions/upload-artifact@v4
+        id: upload
+        continue-on-error: true
+        with:
+          name: ReyForge-2.7-unsigned-ipa
+          path: ipa-builder-build/ReyForge-2.7-unsigned.ipa
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - name: Preserve IPA if artifact storage is unavailable
+        if: steps.upload.outcome == 'failure'
+        run: |
+          mkdir -p builds
+          cp ipa-builder-build/ReyForge-2.7-unsigned.ipa builds/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add builds/ReyForge-2.7-unsigned.ipa
+          git commit -m "Preserve ReyForge 2.7 IPA from build ${GITHUB_RUN_ID}"
+          git push origin "HEAD:refs/heads/codex/reyforge-build-${GITHUB_RUN_ID}"

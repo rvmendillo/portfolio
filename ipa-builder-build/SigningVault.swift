@@ -74,48 +74,48 @@ enum ReyForgeSigningError: LocalizedError {
     }
 }
 
-private struct IPAIdentity: Sendable {
-    let name: String
-    let bundleIdentifier: String
-}
-
 @MainActor
 final class BuiltInSigningManager: ObservableObject {
     @Published var status = "Checking signing assets…"
     @Published var isSigning = false
     @Published var isImporting = false
     @Published var isImportingIPA = false
-    @Published var signedIPAURL: URL?
-    @Published var importedIPAURL: URL?
+    @Published private(set) var signedArtifact: SignedIPA?
+    @Published private(set) var importedIPAURL: URL?
+    @Published var signingPassword = ""
+    @Published private(set) var profileMetadata: ProvisioningMetadata?
+    var signedIPAURL: URL? { signedArtifact?.url }
+    var signedBundleIdentifier: String? { signedArtifact?.identity.bundleIdentifier }
+    var signedAppName: String? { signedArtifact?.identity.name }
+    var isBusy: Bool { isSigning || isImporting || isImportingIPA }
     @Published var lastError: String?
     @Published var diagnostic = ""
     @Published var targetAppName = "My App"
     @Published var targetBundleIdentifier = "com.rvmendillo.myapp"
-    @Published private(set) var signedBundleIdentifier: String?
-    @Published private(set) var signedAppName: String?
-
-    /// The App ID carried by the built-in provisioning profile. This is shown
-    /// for diagnostics only. ReyForge no longer forces signed apps to use it.
-    let profileBundleIdentifier = "app.seaweed4660.tiger8048"
-    let profileExpirationText = "March 2027"
-
-    /// Kept for LocalhostInstaller compatibility. It now returns the bundle ID
-    /// of the app that was actually signed, rather than forcibly returning the
-    /// provisioning profile's App ID.
-    var provisionedBundleIdentifier: String {
-        if let signedBundleIdentifier, !signedBundleIdentifier.isEmpty {
-            return signedBundleIdentifier
-        }
-        let requested = targetBundleIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
-        return requested.isEmpty ? profileBundleIdentifier : requested
+    var profileBundleIdentifier: String { profileMetadata?.appIDPattern ?? "Not configured" }
+    var profileExpirationText: String {
+        profileMetadata?.expiration.formatted(date: .abbreviated, time: .omitted) ?? "Unknown"
     }
+    var provisionedBundleIdentifier: String { signedBundleIdentifier ?? "" }
+    private let artifactKey = "reyforge.signed-artifact.v1"
 
     private let builtInPassword = "1"
     private let fileManager = FileManager.default
 
     init() {
         installBundledAssetsIfNeeded()
-        status = isConfigured ? "Built-in signer ready" : "Import signing bundle"
+        reloadProfileMetadata()
+        if let data = UserDefaults.standard.data(forKey: artifactKey),
+           let saved = try? JSONDecoder().decode(SignedIPA.self, from: data) {
+            // iOS may change the sandbox path when updating an app.
+            let file = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                .appendingPathComponent("SignedBuilds")
+                .appendingPathComponent(saved.url.lastPathComponent)
+            if fileManager.fileExists(atPath: file.path) {
+                signedArtifact = SignedIPA(url: file, identity: saved.identity)
+            }
+        }
+        status = signedArtifact != nil ? "Signed IPA ready" : (isConfigured ? "Local signer ready" : "Import signing bundle")
     }
 
     var isConfigured: Bool {
@@ -126,12 +126,30 @@ final class BuiltInSigningManager: ObservableObject {
     func setTargetIdentity(name: String, bundleIdentifier: String) {
         targetAppName = name
         targetBundleIdentifier = bundleIdentifier
-        signedBundleIdentifier = nil
-        signedAppName = nil
+    }
+
+    private func reloadProfileMetadata() {
+        profileMetadata = (try? Data(contentsOf: provisionURL)).flatMap { try? ProvisioningMetadata(data: $0) }
+    }
+
+    private func invalidateSignedArtifact() {
+        signedArtifact = nil
+        UserDefaults.standard.removeObject(forKey: artifactKey)
+    }
+
+    func useGeneratedIPA() {
+        guard !isBusy else { return }
+        importedIPAURL = nil
+        invalidateSignedArtifact()
+        lastError = nil
+        diagnostic = ""
+        status = "Generated IPA selected"
     }
 
     func importSigningBundle(_ url: URL) async {
+        guard !isBusy else { return }
         isImporting = true
+        defer { isImporting = false }
         lastError = nil
         diagnostic = "Opening signing bundle"
         status = "Importing signing bundle…"
@@ -161,15 +179,26 @@ final class BuiltInSigningManager: ObservableObject {
 
                 guard let p12, let provision else { throw ReyForgeSigningError.noSigningPair }
 
-                try? fm.removeItem(at: destination)
-                try fm.createDirectory(at: destination, withIntermediateDirectories: true)
-                try fm.copyItem(at: p12, to: destination.appendingPathComponent("distribution.p12"))
-                try fm.copyItem(at: provision, to: destination.appendingPathComponent("distribution.mobileprovision"))
+                _ = try ProvisioningMetadata(data: Data(contentsOf: provision))
+                let staging = destination.deletingLastPathComponent()
+                    .appendingPathComponent("SigningVault-\(UUID().uuidString)")
+                try fm.createDirectory(at: staging, withIntermediateDirectories: true)
+                defer { try? fm.removeItem(at: staging) }
+                try fm.copyItem(at: p12, to: staging.appendingPathComponent("distribution.p12"))
+                try fm.copyItem(at: provision, to: staging.appendingPathComponent("distribution.mobileprovision"))
+                if fm.fileExists(atPath: destination.path) {
+                    _ = try fm.replaceItemAt(destination, withItemAt: staging)
+                } else {
+                    try fm.moveItem(at: staging, to: destination)
+                }
             }.value
 
-            try? SigningPasswordStore.save(builtInPassword)
+            try SigningPasswordStore.save(signingPassword)
+            signingPassword = ""
+            reloadProfileMetadata()
+            invalidateSignedArtifact()
             diagnostic = "P12 and provisioning profile imported"
-            status = "Built-in signer ready"
+            status = "Local signer ready"
             objectWillChange.send()
         } catch {
             lastError = error.localizedDescription
@@ -181,32 +210,32 @@ final class BuiltInSigningManager: ObservableObject {
     }
 
     func importIPA(_ url: URL) async {
+        guard !isBusy else { return }
         isImportingIPA = true
+        defer { isImportingIPA = false }
+        invalidateSignedArtifact()
         lastError = nil
         status = "Importing IPA…"
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
 
         do {
-            let result = try await Task.detached(priority: .userInitiated) { () -> (URL, IPAIdentity?) in
+            let result = try await Task.detached(priority: .userInitiated) { () -> (URL, IPAIdentity) in
                 let fm = FileManager.default
                 let dir = fm.urls(for: .documentDirectory, in: .userDomainMask)[0]
                     .appendingPathComponent("SigningInputs", isDirectory: true)
                 try fm.createDirectory(at: dir, withIntermediateDirectories: true)
-                let cleanName = url.lastPathComponent.lowercased().hasSuffix(".ipa") ? url.lastPathComponent : "Imported.ipa"
-                let target = dir.appendingPathComponent(cleanName)
-                try? fm.removeItem(at: target)
+                let identity = try Self.inspectIPA(url)
+                let target = dir.appendingPathComponent("\(UUID().uuidString)-\(url.lastPathComponent)")
                 try fm.copyItem(at: url, to: target)
-                return (target, try? Self.inspectIPA(target))
+                return (target, identity)
             }.value
 
+            let oldInput = importedIPAURL
             importedIPAURL = result.0
-            if let identity = result.1 {
-                targetAppName = identity.name
-                targetBundleIdentifier = identity.bundleIdentifier
-            }
-            signedBundleIdentifier = nil
-            signedAppName = nil
+            targetAppName = result.1.name
+            targetBundleIdentifier = result.1.bundleIdentifier
+            if let oldInput, oldInput != result.0 { try? fileManager.removeItem(at: oldInput) }
             diagnostic = "Imported \(result.0.lastPathComponent)"
             status = "IPA ready to sign"
         } catch {
@@ -217,23 +246,33 @@ final class BuiltInSigningManager: ObservableObject {
     }
 
     func sign(ipaURL: URL, widgetEnabled: Bool) async {
+        guard !isBusy else { return }
+        invalidateSignedArtifact()
         guard isConfigured else {
             lastError = ReyForgeSigningError.signingAssetsMissing.localizedDescription
             return
         }
 
         let identifier = targetBundleIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard Self.isValidBundleIdentifier(identifier) else {
+        guard AppIdentity.isValid(identifier) else {
             lastError = ReyForgeSigningError.invalidBundleIdentifier.localizedDescription
+            return
+        }
+        do {
+            let protected = [AppIdentity.reyForge, AppIdentity.legacyReyForge, Bundle.main.bundleIdentifier ?? ""]
+            guard !protected.contains(identifier) else { throw IdentityError.selfReplacement }
+            guard let profileMetadata else { throw IdentityError.invalidProfile }
+            try profileMetadata.validate(identifier: identifier)
+        } catch {
+            lastError = error.localizedDescription
+            status = "Signing identity needs attention"
             return
         }
         let requestedName = targetAppName.trimmingCharacters(in: .whitespacesAndNewlines)
         let appName = requestedName.isEmpty ? "Signed App" : requestedName
 
         isSigning = true
-        signedIPAURL = nil
-        signedBundleIdentifier = nil
-        signedAppName = nil
+        defer { isSigning = false }
         lastError = nil
         diagnostic = widgetEnabled
             ? "Preparing \(ipaURL.lastPathComponent) and rewriting app/extension identifiers"
@@ -254,9 +293,10 @@ final class BuiltInSigningManager: ObservableObject {
                     appName: appName
                 )
             }.value
-            signedIPAURL = output
-            signedBundleIdentifier = identifier
-            signedAppName = appName
+            signedArtifact = output
+            if let data = try? JSONEncoder().encode(output) {
+                UserDefaults.standard.set(data, forKey: artifactKey)
+            }
             diagnostic = "Signed as \(appName) · \(identifier)"
             status = "Signed IPA ready"
         } catch {
@@ -271,9 +311,8 @@ final class BuiltInSigningManager: ObservableObject {
     func forgetAssets() {
         try? fileManager.removeItem(at: vaultDirectory)
         SigningPasswordStore.delete()
-        signedIPAURL = nil
-        signedBundleIdentifier = nil
-        signedAppName = nil
+        invalidateSignedArtifact()
+        profileMetadata = nil
         status = "Signing assets removed"
         objectWillChange.send()
     }
@@ -312,21 +351,13 @@ final class BuiltInSigningManager: ObservableObject {
         try fm.unzipItem(at: ipaURL, to: root)
         let payload = root.appendingPathComponent("Payload", isDirectory: true)
         let items = try fm.contentsOfDirectory(at: payload, includingPropertiesForKeys: nil)
-        guard let appURL = items.first(where: { $0.pathExtension.lowercased() == "app" }),
-              let info = NSDictionary(contentsOf: appURL.appendingPathComponent("Info.plist")),
-              let identifier = info["CFBundleIdentifier"] as? String else {
-            throw ReyForgeSigningError.invalidArchive
+        let apps = items.filter { $0.pathExtension.lowercased() == "app" }
+        guard apps.count == 1, let appURL = apps.first,
+              let data = try? Data(contentsOf: appURL.appendingPathComponent("Info.plist")),
+              let info = try PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String: Any] else {
+            throw IdentityError.invalidApp
         }
-        let name = (info["CFBundleDisplayName"] as? String)
-            ?? (info["CFBundleName"] as? String)
-            ?? appURL.deletingPathExtension().lastPathComponent
-        return IPAIdentity(name: name, bundleIdentifier: identifier)
-    }
-
-    nonisolated private static func isValidBundleIdentifier(_ identifier: String) -> Bool {
-        guard identifier.contains("."), !identifier.hasPrefix("."), !identifier.hasSuffix(".") else { return false }
-        let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-.")
-        return !identifier.isEmpty && identifier.unicodeScalars.allSatisfy { allowed.contains($0) }
+        return try IPAIdentity(info: info, fallbackName: appURL.deletingPathExtension().lastPathComponent)
     }
 
     nonisolated private static func signSynchronously(
@@ -336,7 +367,7 @@ final class BuiltInSigningManager: ObservableObject {
         password: String,
         bundleIdentifier: String,
         appName: String
-    ) throws -> URL {
+    ) throws -> SignedIPA {
         let fm = FileManager.default
         guard fm.fileExists(atPath: ipaURL.path), fm.fileExists(atPath: p12URL.path), fm.fileExists(atPath: provisionURL.path) else {
             throw ReyForgeSigningError.signingAssetsMissing
@@ -350,9 +381,10 @@ final class BuiltInSigningManager: ObservableObject {
         try fm.unzipItem(at: ipaURL, to: extract)
         let payload = extract.appendingPathComponent("Payload", isDirectory: true)
         let payloadItems = try fm.contentsOfDirectory(at: payload, includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles])
-        guard let appURL = payloadItems.first(where: { $0.pathExtension.lowercased() == "app" }) else {
-            throw ReyForgeSigningError.invalidArchive
-        }
+        let apps = payloadItems.filter { $0.pathExtension.lowercased() == "app" }
+        guard apps.count == 1, let appURL = apps.first else { throw IdentityError.invalidApp }
+        let profile = try ProvisioningMetadata(data: Data(contentsOf: provisionURL))
+        try profile.validate(identifier: bundleIdentifier)
 
         let infoURL = appURL.appendingPathComponent("Info.plist")
         guard let originalInfo = NSDictionary(contentsOf: infoURL),
@@ -372,6 +404,16 @@ final class BuiltInSigningManager: ObservableObject {
             oldIdentifier: oldIdentifier,
             newIdentifier: bundleIdentifier
         )
+
+        // Nested targets need their own permitted identities too.
+        if let targets = fm.enumerator(at: appURL, includingPropertiesForKeys: nil) {
+            for case let target as URL in targets where ["app", "appex"].contains(target.pathExtension) {
+                if let info = NSDictionary(contentsOf: target.appendingPathComponent("Info.plist")),
+                   let identifier = info["CFBundleIdentifier"] as? String {
+                    try profile.validate(identifier: identifier)
+                }
+            }
+        }
 
         // Remove stale signatures and stale embedded profile before Zsign.
         try? fm.removeItem(at: appURL.appendingPathComponent("_CodeSignature", isDirectory: true))
@@ -431,14 +473,18 @@ final class BuiltInSigningManager: ObservableObject {
         let safeName = appName
             .replacingOccurrences(of: "/", with: "-")
             .replacingOccurrences(of: ":", with: "-")
-        let output = builds.appendingPathComponent("\(safeName)-signed.ipa")
-        try? fm.removeItem(at: output)
+        let output = builds.appendingPathComponent("\(safeName)-\(UUID().uuidString.prefix(8))-signed.ipa")
         try fm.zipItem(at: payload, to: output, shouldKeepParent: true, compressionMethod: .deflate)
 
         guard fm.fileExists(atPath: output.path) else {
             throw ReyForgeSigningError.validationFailed("signed IPA was not written")
         }
-        return output
+        let identity = try inspectIPA(output)
+        guard identity.bundleIdentifier == bundleIdentifier, identity.name == appName else {
+            try? fm.removeItem(at: output)
+            throw ReyForgeSigningError.validationFailed("archive identity changed during packaging")
+        }
+        return SignedIPA(url: output, identity: identity)
     }
 
     nonisolated private static func rewriteMainIdentity(
@@ -483,7 +529,9 @@ final class BuiltInSigningManager: ObservableObject {
                 info["CFBundleIdentifier"] = replacingIdentifierPrefix(current, old: oldIdentifier, new: newIdentifier)
             }
             rewriteIdentifierReferences(in: info, oldIdentifier: oldIdentifier, newIdentifier: newIdentifier)
-            _ = info.write(to: infoURL, atomically: true)
+            guard info.write(to: infoURL, atomically: true) else {
+                throw ReyForgeSigningError.validationFailed("could not update a nested app identity")
+            }
         }
     }
 
@@ -513,11 +561,7 @@ final class BuiltInSigningManager: ObservableObject {
     }
 
     nonisolated private static func replacingIdentifierPrefix(_ value: String, old: String, new: String) -> String {
-        if value == old { return new }
-        if value.hasPrefix(old + ".") {
-            return new + value.dropFirst(old.count)
-        }
-        return value.replacingOccurrences(of: old, with: new)
+        AppIdentity.replacingPrefix(value, old: old, new: new)
     }
 }
 
@@ -541,13 +585,15 @@ struct ReyForgeSigningPanel: View {
             Section("Local signer") {
                 LabeledContent("Status", value: signer.status)
                 LabeledContent("Profile App ID", value: signer.profileBundleIdentifier)
-                LabeledContent("Profile", value: "Your registered iPhone · expires \(signer.profileExpirationText)")
+                LabeledContent("Expires", value: signer.profileExpirationText)
 
-                if !signer.isConfigured {
+                SecureField("Signing ZIP password (empty if none)", text: $signer.signingPassword)
+                    .textContentType(.password)
+                Group {
                     Button {
                         importingBundle = true
                     } label: {
-                        Label("Import Signing ZIP", systemImage: "lock.doc")
+                        Label(signer.isConfigured ? "Replace Signing ZIP" : "Import Signing ZIP", systemImage: "lock.doc")
                     }
                 }
 
@@ -557,6 +603,15 @@ struct ReyForgeSigningPanel: View {
                     Label(signer.isImportingIPA ? "Importing IPA…" : "Import IPA to Sign", systemImage: "square.and.arrow.down")
                 }
                 .disabled(signer.isImportingIPA || signer.isSigning)
+
+                if signer.importedIPAURL != nil, github.ipaURL != nil {
+                    Button("Use Generated IPA") {
+                        signer.useGeneratedIPA()
+                        if let project = store.selected {
+                            signer.setTargetIdentity(name: project.name, bundleIdentifier: project.bundleIdentifier)
+                        }
+                    }
+                }
 
                 if !signer.diagnostic.isEmpty {
                     Text(signer.diagnostic)
@@ -621,11 +676,12 @@ struct ReyForgeSigningPanel: View {
             }
 
             Section("Provisioning note") {
-                Text("ReyForge no longer forces every app to \(signer.profileBundleIdentifier). It signs the identity you enter, matching Feather's behavior. iOS still makes the final decision about whether the selected provisioning profile authorizes that identity and its entitlements.")
+                Text("Each app needs its own bundle ID and a profile that permits it. ReyForge checks the requested identity before signing, so apps stay separate when switching between them.")
                     .font(.caption)
                     .foregroundStyle(.orange)
             }
         }
+        .disabled(signer.isBusy)
         .task(id: store.selectedID) {
             guard signer.importedIPAURL == nil, let project = store.selected else { return }
             signer.setTargetIdentity(name: project.name, bundleIdentifier: project.bundleIdentifier)
