@@ -13,11 +13,11 @@ A native iPhone and iPad app for creating Home Screen widgets with SwiftUI layou
 - On-device Apple Foundation Models where available, plus an actual llama.cpp GGUF runtime with Metal or CPU inference. No cloud fallback or simulated generation.
 - Configurable HTTPS GET and read-only POST APIs, Keychain-stored headers, response inspection, sample JSON, bounded responses, refresh intervals, and cached-data fallback for native widgets.
 - Import/export as `.reywidget.json`, duplication, deletion, widget-to-editor deep links, six editable templates, and an in-app guide.
-- A ready-to-open Xcode project, deterministic project generator, simulator build/test script, XCTest coverage, UI smoke tests, and a GitHub Actions workflow.
+- An included Xcode project, deterministic project generator, simulator build/test script, XCTest coverage, UI smoke tests, and a GitHub Actions workflow.
 
 ## Build and install
 
-1. On a Mac, install **Xcode 26 or newer** with an iOS simulator/runtime and open `ReyWidgets.xcodeproj`. The app deployment target is iOS 17.0. Xcode downloads the pinned llama.cpp XCFramework on first package resolution; model weights are separate.
+1. On a Mac, install **Xcode 26 or newer** with an iOS simulator/runtime and CMake (`brew install cmake`). Run `bash Scripts/prepare_runtime.sh` once, then open `ReyWidgets.xcodeproj`. The script builds the pinned llama.cpp source for iPhone and simulator; the app deployment target is iOS 17.0. If Xcode reports a missing Metal compiler, install it with `xcodebuild -downloadComponent MetalToolchain`. Model weights are separate.
 2. Edit `Config/Base.xcconfig`. Set your unique `BUNDLE_ID_PREFIX` and `DEVELOPMENT_TEAM`. Keep `APP_GROUP` and `KEYCHAIN_GROUP` shared across both targets.
 3. For the **ReyWidgets** and **ReyWidgetsExtension** targets, check Signing & Capabilities. Enable the same App Group and Keychain sharing group. Register the group in your Apple Developer account if needed. Use a signing team that supports these capabilities.
 4. Choose the **ReyWidgets** scheme and run on your iPhone. Launch the app once. If shared storage is unavailable, the app shows the signing problem instead of silently saving somewhere the widget cannot read.
@@ -34,7 +34,7 @@ RW_DESTINATION='platform=iOS Simulator,id=YOUR_SIMULATOR_UDID' bash Scripts/buil
 
 After configuring a signing team, create an archive with `bash Scripts/build.sh archive`, then export from Xcode Organizer with the appropriate signing method. The app and embedded `.appex` must both retain their App Group and Keychain entitlements. An unsigned ZIP renamed to `.ipa` will not provide working Home Screen widgets. A hosted app inside LiveContainer does not register its own system widget extension.
 
-The CI workflow expects the runner's selected Xcode to be 26+. If the image selects an older version, select an installed Xcode 26+ before the build step. The script reports this clearly. No repository was created or workflow run during this task.
+In `rvmendillo/portfolio`, `.github/workflows/build-reywidgets-ios.yml` selects Xcode 26+, builds and caches both AI runtime variants, builds the app and widget extension, packages an unsigned IPA, and runs simulator tests. Pushes to the ReyWidgets branch trigger this workflow. Check its result before using an artifact.
 
 ## Local AI
 
@@ -45,7 +45,7 @@ The CI workflow expects the runner's selected Xcode to be 26+. If the image sele
 
 For a phone without Apple Intelligence, such as an iPhone 13, use the GGUF route. Start with a small 0.5B–1.5B Q4 instruction model with an embedded chat template. The importer checks the file header and size; llama.cpp validates model compatibility at load time. The runtime reports unsupported models or allocation failures. Device-specific speed and memory limits are not yet measured.
 
-Model weights are **not bundled** and must be obtained separately under their license. Once imported, generation needs no network, API key, or JIT. The binary runtime is pinned to llama.cpp **b10809** with a verified published SHA-256. It loads for generation and unloads afterward; concurrency is serialized, output is capped, and cancellation is checked between decoding steps. The Apple model path checks actual availability before generating.
+Model weights are **not bundled** and must be obtained separately under their license. Once imported, generation needs no network, API key, or JIT. The runtime is built from llama.cpp **b10809**, pinned to commit `5266f24da75dc449bd56cbed7addb9c8e4a6a73e`. Building from source supplies both iPhone and simulator variants, which the published b10809 binary does not include. It loads for generation and unloads afterward; concurrency is serialized, output is capped, and cancellation is checked between decoding steps. The Apple model path checks actual availability before generating.
 
 AI returns editable HTML/CSS/JavaScript. Review → Apply to editor → Run preview → Publish. Malformed or truncated results produce an error; they are not silently replaced with a canned template. Small local models may require shorter prompts and manual edits. API credentials and API response bodies are never automatically included in the AI prompt.
 
@@ -78,7 +78,7 @@ Exports include URLs, request bodies, sample data, and source code, but omit sto
 | `App/` | SwiftUI studio, WebKit preview/capture, AI orchestration, GGUF engine |
 | `Core/` | Shared models, storage, binding resolver, native renderer, API client, refresh intent |
 | `Widget/` | WidgetKit provider, App Entity configuration and extension entry point |
-| `Packages/LlamaRuntime/` | Checksum-pinned Swift Package binary dependency |
+| `Packages/LlamaRuntime/` | Swift Package for the locally built, revision-pinned runtime |
 | `Config/` | Build settings, app/extension plists and shared entitlements |
 | `Tests/`, `UITests/` | Native test suites to run on a Mac |
 | `Scripts/` | Project generator, build script, desktop/static validation |

@@ -49,17 +49,29 @@ jobs:
           print('Selected Xcode', version)
           PY
 
-      - name: Inspect runtime package platforms
+      - name: Restore built AI runtime
+        id: runtime-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ios/ReyWidgets/Packages/LlamaRuntime/Frameworks
+          key: reywidgets-llama-b10809-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('ios/ReyWidgets/Scripts/prepare_runtime.sh') }}
+
+      - name: Prepare Metal compiler
+        if: steps.runtime-cache.outputs.cache-hit != 'true'
         run: |
-          xcodebuild -project ReyWidgets.xcodeproj -scheme ReyWidgets -derivedDataPath build/DeviceDerivedData -resolvePackageDependencies
-          python3 - <<'PYCODE'
-          from pathlib import Path
-          import plistlib
-          for info in Path('build/DeviceDerivedData/SourcePackages/artifacts').rglob('llama.xcframework/Info.plist'):
-              print('Runtime XCFramework:', info)
-              with info.open('rb') as handle:
-                  print(plistlib.load(handle))
-          PYCODE
+          if ! xcrun -sdk iphoneos metal --version; then
+            xcodebuild -downloadComponent MetalToolchain
+          fi
+
+      - name: Build AI runtime for iPhone and simulator
+        run: bash Scripts/prepare_runtime.sh
+
+      - name: Cache built AI runtime
+        if: steps.runtime-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ios/ReyWidgets/Packages/LlamaRuntime/Frameworks
+          key: ${{ steps.runtime-cache.outputs.cache-primary-key }}
 
       - name: Build unsigned iPhone app and extension
         run: |
@@ -67,9 +79,6 @@ jobs:
             -configuration Release -destination 'generic/platform=iOS' \
             -derivedDataPath build/DeviceDerivedData \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
-
-      - name: Build simulator app and widget extension
-        run: bash Scripts/build.sh build
 
       - name: Package unsigned IPA with widget extension
         run: |
@@ -79,6 +88,9 @@ jobs:
           cd build/Package
           /usr/bin/zip -qry ../ReyWidgets-unsigned.ipa Payload
           /usr/bin/unzip -t ../ReyWidgets-unsigned.ipa
+
+      - name: Build simulator app and widget extension
+        run: bash Scripts/build.sh build
 
       - name: Run native unit and UI tests
         run: bash Scripts/build.sh test

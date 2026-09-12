@@ -11,6 +11,7 @@ if [[ "$rw_xcode_major" -lt 26 ]]; then
   exit 1
 fi
 rw_action="${1:-build}"
+bash Scripts/prepare_runtime.sh
 case "$rw_action" in
   build)
     xcodebuild -project ReyWidgets.xcodeproj -scheme ReyWidgets -configuration Debug \

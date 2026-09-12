@@ -4,6 +4,7 @@ xcuserdata/
 *.xcuserstate
 .swiftpm/
 .build/
+Packages/LlamaRuntime/Frameworks/
 *.gguf
 *.ipa
 *.p12

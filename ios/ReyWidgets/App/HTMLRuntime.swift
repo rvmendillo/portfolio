@@ -120,7 +120,7 @@ struct HTMLPreview: UIViewRepresentable {
         await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
         if (window.__rwError) throw new Error(window.__rwError);
         return true;
-        """, arguments: [:], in: nil, contentWorld: .page) { [weak self, weak webView] result in
+        """, arguments: [:], in: nil, in: .page) { [weak self, weak webView] result in
             guard let self, let webView, self.continuation != nil else { return }
             switch result {
             case .failure(let error): self.finish(.failure(error))
