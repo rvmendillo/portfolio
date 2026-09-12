@@ -1,0 +1,83 @@
+{
+  "commit": "7807f7218eeb3bfb2c2fd5b8cea52670ecf09457",
+  "date": "2026-09-12",
+  "iphone_build": "passed",
+  "repository": "rvmendillo/portfolio",
+  "simulator": "iPhone 17 Pro, iOS 26.2",
+  "simulator_build": "passed",
+  "test_results_artifact": 10299812992,
+  "tests": [
+    {
+      "name": "ReyWidgetsTests.CoreTests testAIRejectsMissingFieldsAndTruncatedOutput",
+      "result": "passed",
+      "seconds": 0.009
+    },
+    {
+      "name": "ReyWidgetsTests.CoreTests testAllTemplatesValidateAndRoundTrip",
+      "result": "passed",
+      "seconds": 0.002
+    },
+    {
+      "name": "ReyWidgetsTests.CoreTests testCacheIsInvalidatedWhenRequestChangesAndFailedWritePreservesDocument",
+      "result": "passed",
+      "seconds": 0.019
+    },
+    {
+      "name": "ReyWidgetsTests.CoreTests testExportImportResetsIdentityAndNetwork",
+      "result": "passed",
+      "seconds": 0.001
+    },
+    {
+      "name": "ReyWidgetsTests.CoreTests testHTMLDataCannotBreakScriptBoundary",
+      "result": "passed",
+      "seconds": 0.001
+    },
+    {
+      "name": "ReyWidgetsTests.CoreTests testHTMLSnapshotWaitsForJavaScriptAndCapturesAllSizes",
+      "result": "passed",
+      "seconds": 4.823
+    },
+    {
+      "name": "ReyWidgetsTests.CoreTests testInvalidSchemaAndOversizedPayloadsAreRejected",
+      "result": "passed",
+      "seconds": 0.008
+    },
+    {
+      "name": "ReyWidgetsTests.CoreTests testPointerEscapingArraysAndMissingValues",
+      "result": "passed",
+      "seconds": 0.005
+    },
+    {
+      "name": "ReyWidgetsTests.CoreTests testRejectUnsafeAPIURLs",
+      "result": "passed",
+      "seconds": 0.001
+    },
+    {
+      "name": "ReyWidgetsTests.CoreTests testUnicodeBindingRanges",
+      "result": "passed",
+      "seconds": 0.001
+    },
+    {
+      "name": "ReyWidgetsUITests.StudioUITests testCreateNativeWidgetOpensEditor",
+      "result": "passed",
+      "seconds": 16.512
+    },
+    {
+      "name": "ReyWidgetsUITests.StudioUITests testSettingsAndGGUFImportAreDiscoverable",
+      "result": "passed",
+      "seconds": 12.733
+    }
+  ],
+  "tests_failed": 0,
+  "tests_passed": 12,
+  "unsigned_ipa_artifact": 10299842657,
+  "unverified": [
+    "Device provisioning and Home Screen installation",
+    "Physical-device Apple/GGUF inference",
+    "Live API authentication and endpoint behavior",
+    "Detailed accessibility and visual review"
+  ],
+  "url": "https://github.com/rvmendillo/portfolio/actions/runs/34700075060",
+  "workflow_run": 34700075060,
+  "xcode": "26.3"
+}

@@ -2,7 +2,7 @@
 
 A native iPhone and iPad app for creating Home Screen widgets with SwiftUI layouts, HTML/CSS/JavaScript, custom JSON APIs, and on-device AI.
 
-**Delivery status:** implemented source project. Swift syntax and desktop HTML runtime checks are recorded in `Docs/VALIDATION.md`. An iOS build, simulator run, real-device test, and signing have **not** been performed in this Linux environment. This archive is not an installable IPA.
+**Build status:** [iPhone and simulator builds passed, along with all 12 tests](https://github.com/rvmendillo/portfolio/actions/runs/34700075060). [Download the unsigned IPA](https://github.com/rvmendillo/portfolio/actions/runs/34700075060/artifacts/10299842657) from the build artifact ZIP. See `Docs/VALIDATION.md` for evidence and remaining device checks. Sign the app and extension before installing on an iPhone; model weights are separate.
 
 ## Included
 
@@ -31,6 +31,8 @@ bash Scripts/build.sh test
 # Optional simulator override:
 RW_DESTINATION='platform=iOS Simulator,id=YOUR_SIMULATOR_UDID' bash Scripts/build.sh test
 ```
+
+The test script chooses the newest installed iPhone simulator and sets test time limits. Avoid the iOS 18.5 simulator's [upstream WebKit loader issue](https://bugs.webkit.org/show_bug.cgi?id=293831); use a newer runtime for validation.
 
 After configuring a signing team, create an archive with `bash Scripts/build.sh archive`, then export from Xcode Organizer with the appropriate signing method. The app and embedded `.appex` must both retain their App Group and Keychain entitlements. An unsigned ZIP renamed to `.ipa` will not provide working Home Screen widgets. A hosted app inside LiveContainer does not register its own system widget extension.
 
