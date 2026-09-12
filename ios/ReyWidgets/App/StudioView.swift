@@ -38,7 +38,7 @@ struct StudioView: View {
                     Text("\(studio.documents.count)").font(.caption.monospacedDigit()).foregroundStyle(Palette.muted)
                     Spacer()
                     Button { creating = true } label: { Image(systemName: "plus").font(.title3.weight(.medium)) }
-                        .accessibilityLabel("Create widget").disabled(!studio.storageReady)
+                        .accessibilityLabel("Create widget").accessibilityIdentifier("studio.create").disabled(!studio.storageReady)
                 }.padding(.top, 8)
                 if studio.documents.isEmpty && studio.storageReady {
                     ContentUnavailableView("A fresh canvas", systemImage: "square.dashed", description: Text("Tap + to create your first widget."))
@@ -129,7 +129,7 @@ struct NewDesignSheet: View {
         NavigationStack {
             Form {
                 Section("A new canvas") {
-                    TextField("Name", text: $name)
+                    TextField("Name", text: $name).accessibilityIdentifier("design.name")
                     Picker("Renderer", selection: $mode) { ForEach(WidgetMode.allCases) { Text($0.label).tag($0) } }
                         .pickerStyle(.segmented)
                 }
@@ -138,6 +138,7 @@ struct NewDesignSheet: View {
                           systemImage: mode == .native ? "square.stack.3d.up" : "curlybraces")
                 }
                 Button("Create widget") { var doc = WidgetDocument(); doc.name = name; doc.mode = mode; create(doc) }
+                    .accessibilityIdentifier("design.create")
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
             .navigationTitle("Make something yours")
