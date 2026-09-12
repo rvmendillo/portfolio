@@ -20,7 +20,17 @@ jobs:
       - run: npm test
       - run: npm run test:wasm
       - run: npx playwright install --with-deps chromium
+        id: browser-install
       - run: npm run test:web
+      - name: Test real local model in the browser
+        if: ${{ !cancelled() && steps.browser-install.outcome == 'success' }}
+        run: npm run test:ai
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ReyOS-web-test-evidence
+          path: .test-output/
+          if-no-files-found: ignore
       - name: Package web application
         run: zip -r ReyOS-web.zip index.html styles.css script.js sw.js icon.svg manifest.webmanifest assets
       - uses: actions/upload-artifact@v4

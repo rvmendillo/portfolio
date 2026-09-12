@@ -1,0 +1,51 @@
+import {chromium} from 'playwright';
+import {spawn} from 'node:child_process';
+import {mkdir,writeFile} from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const server=spawn('python3',['-m','http.server','8766','--bind','127.0.0.1'],{stdio:'ignore'});
+let browser,page;
+const checks=[],errors=[];
+try{
+  for(let i=0;i<50;i++){try{if((await fetch('http://127.0.0.1:8766')).ok)break}catch{}await new Promise(r=>setTimeout(r,100))}
+  browser=await chromium.launch({headless:true});
+  page=await browser.newPage({viewport:{width:1440,height:1000}});
+  page.setDefaultTimeout(60000);page.on('pageerror',e=>errors.push(e.message));
+  await page.goto('http://127.0.0.1:8766');await page.locator('#bootSkip').click();
+  await page.evaluate(()=>openApp('ide'));await page.locator('.cm-content').waitFor();
+  const ai=page.getByRole('region',{name:'Local AI assistant'});
+  await ai.locator('input[type=file]').setInputFiles('.dependency-cache/rey-coder.gguf');
+  await page.waitForFunction(()=>ReyDev.localAI.state==='ready'||ReyDev.localAI.state==='error',null,{timeout:180000});
+  assert.equal(await page.evaluate(()=>ReyDev.localAI.state),'ready',await ai.locator('[role=status]').innerText());
+  checks.push('Verified GGUF imports and loads through the real Wllama browser engine');
+  await page.locator('.cm-content').fill('print("before AI edit")');
+  await ai.getByRole('textbox',{name:'Ask local AI'}).fill('Replace the current Python file. Define square(n) returning n * n, then print(square(7)). Return only the complete file in a python code block.');
+  await ai.getByRole('button',{name:'Send',exact:true}).click();
+  await ai.getByText('Review proposed replacement',{exact:true}).waitFor({timeout:180000});
+  const response=await ai.locator('.dev-chat-answer pre').first().innerText();
+  assert.match(response,/def\s+square/);checks.push('Actual local model generates a Python function and proposes an edit');
+  await ai.getByText('Review proposed replacement',{exact:true}).click();
+  await ai.getByRole('button',{name:'Apply replacement',exact:true}).click();
+  await page.getByRole('button',{name:'Run program',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('.dev-output')?.textContent.includes('Exit code:'),null,{timeout:120000});
+  const output=await page.locator('.dev-output').innerText();assert.match(output,/49/);assert.match(output,/Exit code: 0/);
+  checks.push('Reviewed model-generated code executes in the real IDE Python runtime and prints 49');
+  await ai.getByRole('button',{name:'New chat',exact:true}).click();
+  await ai.getByRole('textbox',{name:'Ask local AI'}).fill('Write every integer from 1 to 10000, one per line.');
+  await ai.getByRole('button',{name:'Send',exact:true}).click();
+  await page.waitForFunction(()=>ReyDev.localAI.busy&&document.querySelector('.dev-chat-answer pre')?.textContent!=='Reading your request…',null,{timeout:120000});
+  await ai.getByRole('button',{name:'Stop',exact:true}).click();
+  await page.waitForFunction(()=>!ReyDev.localAI.busy,null,{timeout:30000});
+  checks.push('Stop cancels active browser model generation and restores the controls');
+  await ai.getByRole('button',{name:'Unload',exact:true}).click();
+  await page.waitForFunction(()=>ReyDev.localAI.state==='unloaded');
+  checks.push('Unload releases the browser inference engine');
+  assert.deepEqual(errors,[]);
+  await mkdir('.test-output',{recursive:true});
+  await writeFile('.test-output/browser-ai-results.json',JSON.stringify({passed:checks,response,output,errors},null,2));
+  await page.screenshot({path:'.test-output/browser-ai.png'});
+  console.log(checks.join('\n'));
+}catch(e){
+  await mkdir('.test-output',{recursive:true});
+  await writeFile('.test-output/browser-ai-failure.json',JSON.stringify({passed:checks,error:String(e),errors,status:page?await page.locator('.dev-model-status').textContent().catch(()=>null):null},null,2));
+  await page?.screenshot({path:'.test-output/browser-ai-failure.png'}).catch(()=>{});throw e;
+}finally{await browser?.close();server.kill()}
