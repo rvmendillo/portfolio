@@ -48,6 +48,7 @@ try{
     const before=await win.boundingBox();const bar=await win.locator('.titlebar').boundingBox();await page.mouse.move(bar.x+65,bar.y+20);await page.mouse.down();await page.mouse.move(bar.x+90,bar.y+110,{steps:6});await page.mouse.up();const after=await win.boundingBox();assert.ok(after.y>before.y+20);
     await win.locator('[data-action="minimize"]').click();await page.locator('#runningApps button[data-app="calculator"]').click();assert.ok(!(await win.getAttribute('class')).includes('minimized'));
     await win.locator('[data-action="maximize"]').click();assert.match(await win.getAttribute('class'),/maximized/);
+    await page.waitForFunction(()=>{const r=document.querySelector('.app-window[data-app="calculator"]').getBoundingClientRect();return r.x<=5&&r.right<=innerWidth});
   });
   await mkdir('.test-output',{recursive:true});await page.screenshot({path:'.test-output/mobile.png'});
   await close('calculator');await page.setViewportSize({width:1440,height:1000});await open('ide');await page.screenshot({path:'.test-output/ide.png'});

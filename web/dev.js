@@ -1,6 +1,8 @@
 import {EditorView,keymap} from '@codemirror/view';
 import {EditorState,Compartment} from '@codemirror/state';
 import {basicSetup} from 'codemirror';
+import {HighlightStyle,syntaxHighlighting} from '@codemirror/language';
+import {tags} from '@lezer/highlight';
 import {indentWithTab} from '@codemirror/commands';
 import {python} from '@codemirror/lang-python';
 import {javascript} from '@codemirror/lang-javascript';
@@ -14,6 +16,14 @@ const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className
 const button=(label,fn,cls='dev-button')=>{const b=el('button',cls,label);b.type='button';b.addEventListener('click',fn);return b};
 const mode=name=>name.endsWith('.py')?'Python':name.endsWith('.java')?'Java':/\.(cpp|h|hpp|cc)$/.test(name)?'C++':/\.ya?ml$/.test(name)?'YAML':/\.(js|mjs|ts)$/.test(name)?'JavaScript':'Text';
 const extension=lang=>({'Python':python,'JavaScript':javascript,'Java':java,'C++':cpp,'YAML':yaml}[lang]||(()=>[]))();
+const codeColors=syntaxHighlighting(HighlightStyle.define([
+  {tag:tags.keyword,color:'#d6a7ff'},
+  {tag:[tags.string,tags.regexp],color:'#a8e6b5'},
+  {tag:[tags.number,tags.bool,tags.null],color:'#ffca91'},
+  {tag:tags.comment,color:'#98adc4'},
+  {tag:tags.function(tags.variableName),color:'#8dceff'},
+  {tag:[tags.typeName,tags.className],color:'#8ee0d4'}
+]));
 function download(name,text){const a=document.createElement('a'),url=URL.createObjectURL(new Blob([text],{type:'text/plain'}));a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 const readSaved=(key,fallback)=>{try{const x=JSON.parse(localStorage.getItem(key));if(!x||typeof x!=='object'||Array.isArray(x))return fallback;return x}catch{return fallback}};
 const validFilename=name=>/^[\w][\w. /-]{0,79}$/.test(name)&&!name.includes('..')&&!name.endsWith('/')&&!name.includes('//');
@@ -73,7 +83,7 @@ export async function mountIDE(win,{profile,samples,previewYAML,notify}) {
   const stop=button('■ Stop',()=>runner.stop());stop.disabled=true;
   const select=el('select');select.setAttribute('aria-label','Language');for(const item of ['Python','JavaScript','Java','C++','YAML','Text'])select.append(new Option(item,item));select.value=mode(current);
   const editor=new EditorView({parent:host,state:newState(files[current],current)});
-  function newState(text,name){return EditorState.create({doc:text,extensions:[basicSetup,keymap.of([indentWithTab,{key:'Mod-Enter',run:()=>{runProgram();return true}},{key:'Mod-s',run:()=>{save();return true}}]),language.of(extension(mode(name))),EditorView.theme({'&':{height:'100%',fontSize:'14px',backgroundColor:'#081323',color:'#dce8f7'},'.cm-scroller':{overflow:'auto',fontFamily:'ui-monospace, SFMono-Regular, monospace'},'.cm-gutters':{backgroundColor:'#0b1829',color:'#8296b2',border:'none'},'.cm-activeLine':{backgroundColor:'#163354'},'.cm-activeLineGutter':{backgroundColor:'#163354'},'.cm-content':{caretColor:'#7fc5ff'}},{dark:true}),EditorView.updateListener.of(update=>{if(update.docChanged){files[current]=update.state.doc.toString();save()}})]});}
+  function newState(text,name){return EditorState.create({doc:text,extensions:[basicSetup,codeColors,keymap.of([indentWithTab,{key:'Mod-Enter',run:()=>{runProgram();return true}},{key:'Mod-s',run:()=>{save();return true}}]),language.of(extension(mode(name))),EditorView.theme({'&':{height:'100%',fontSize:'14px',backgroundColor:'#081323',color:'#dce8f7'},'.cm-scroller':{overflow:'auto',fontFamily:'ui-monospace, SFMono-Regular, monospace'},'.cm-gutters':{backgroundColor:'#0b1829',color:'#8296b2',border:'none'},'.cm-activeLine':{backgroundColor:'#163354'},'.cm-activeLineGutter':{backgroundColor:'#163354'},'.cm-content':{caretColor:'#7fc5ff'}},{dark:true}),EditorView.updateListener.of(update=>{if(update.docChanged){files[current]=update.state.doc.toString();save()}})]});}
   function save(){files[current]=editor.state.doc.toString();try{localStorage.setItem(key,JSON.stringify(files));saved.textContent='Saved locally'}catch{saved.textContent='Storage full — export your project';}}
   function switchFile(name){if(!Object.hasOwn(files,name))return;save();states.set(current,editor.state);current=name;filename.textContent=current;editor.setState(states.get(name)||newState(files[name],name));select.value=mode(name);renderFiles();}
   function renderFiles(){sidebar.replaceChildren(el('b','dev-small','PROJECT'));for(const name of Object.keys(files).sort()){const b=button(name,()=>switchFile(name),'dev-file'+(name===current?' active':''));b.setAttribute('aria-label','Open '+name);sidebar.append(b)}}

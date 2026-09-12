@@ -17,7 +17,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - run: npm test
+      - run: |
+          javac -version
+          npm test
       - run: npm run test:wasm
       - run: npx playwright install --with-deps chromium
         id: browser-install
