@@ -14,6 +14,7 @@ struct NativeWidgetView: View {
     var large = false
     var status: String?
     var reserveActionSpace = false
+    var clockDate: Date?
     private func resolve(_ text: String) -> String { Bindings.render(text, data: data) }
     var body: some View {
         VStack(alignment: .leading, spacing: compact ? 8 : 12) {
@@ -29,9 +30,8 @@ struct NativeWidgetView: View {
                     .minimumScaleFactor(0.35).lineLimit(2).foregroundStyle(Color(hex: design.accent))
                 Text(resolve(design.subtitle)).font(.system(size: 12)).lineLimit(compact ? 2 : 3).opacity(0.75)
             case .clock:
-                Text(Date(), style: .time).font(.system(size: compact ? 32 : 46, weight: .medium, design: .rounded))
-                    .minimumScaleFactor(0.4).lineLimit(1).foregroundStyle(Color(hex: design.accent))
-                Text(Date(), format: .dateTime.weekday(.wide).month(.abbreviated).day()).font(.system(size: 12)).opacity(0.75)
+                if let clockDate { clock(at: clockDate) }
+                else { TimelineView(.everyMinute) { context in clock(at: context.date) } }
             case .list:
                 ForEach(Array(design.rows.prefix(large ? 7 : 3).enumerated()), id: \.offset) { _, row in
                     HStack(alignment: .top, spacing: 8) {
@@ -59,5 +59,12 @@ struct NativeWidgetView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .background(Color(hex: design.background))
         .accessibilityElement(children: .combine)
+    }
+    private func clock(at date: Date) -> some View {
+        VStack(alignment: .leading, spacing: compact ? 8 : 12) {
+            Text(date, style: .time).font(.system(size: compact ? 32 : 46, weight: .medium, design: .rounded))
+                .minimumScaleFactor(0.4).lineLimit(1).foregroundStyle(Color(hex: design.accent))
+            Text(date, format: .dateTime.weekday(.wide).month(.abbreviated).day()).font(.system(size: 12)).opacity(0.75)
+        }
     }
 }

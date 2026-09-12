@@ -46,6 +46,7 @@ jobs:
           _, developer, version = max(candidates)
           with open(os.environ['GITHUB_ENV'], 'a') as f:
               f.write('DEVELOPER_DIR=' + developer + '\n')
+              f.write('RW_XCODE_VERSION=' + version + '\n')
           print('Selected Xcode', version)
           PY
 
@@ -54,10 +55,11 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ios/ReyWidgets/Packages/LlamaRuntime/Frameworks
-          key: reywidgets-llama-b10809-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('ios/ReyWidgets/Scripts/prepare_runtime.sh') }}
+          key: reywidgets-llama-b10809-${{ runner.os }}-${{ runner.arch }}-${{ env.RW_XCODE_VERSION }}-${{ hashFiles('ios/ReyWidgets/Scripts/prepare_runtime.sh') }}
+          restore-keys: |
+            reywidgets-llama-b10809-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('ios/ReyWidgets/Scripts/prepare_runtime.sh') }}
 
       - name: Prepare Metal compiler
-        if: steps.runtime-cache.outputs.cache-hit != 'true'
         run: |
           if ! xcrun -sdk iphoneos metal --version; then
             xcodebuild -downloadComponent MetalToolchain

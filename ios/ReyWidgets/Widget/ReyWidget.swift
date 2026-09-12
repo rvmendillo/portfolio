@@ -46,6 +46,18 @@ struct StudioProvider: AppIntentTimelineProvider {
         let value = await entry(configuration: configuration, family: context.family, refresh: true)
         if value.document?.mode == .html { return Timeline(entries: [value], policy: .never) }
         let interval = max(15, value.document?.api.refreshMinutes ?? 30)
+        if value.document?.native.layout == .clock {
+            // Precompute clock changes without issuing a network request for
+            // every minute. WidgetKit still controls actual display scheduling.
+            let minutes = value.document?.api.enabled == true ? min(interval, 60) : 60
+            let nextMinute = Date(timeIntervalSince1970: (floor(value.date.timeIntervalSince1970 / 60) + 1) * 60)
+            let entries = [value] + (0..<minutes).map { offset in
+                var entry = value
+                entry.date = nextMinute.addingTimeInterval(Double(offset) * 60)
+                return entry
+            }
+            return Timeline(entries: entries, policy: .after(nextMinute.addingTimeInterval(Double(minutes) * 60)))
+        }
         return Timeline(entries: [value], policy: .after(Date().addingTimeInterval(Double(interval) * 60)))
     }
     private func entry(configuration: ChooseDesignIntent, family: WidgetFamily, refresh: Bool) async -> StudioEntry {
@@ -97,7 +109,8 @@ struct StudioWidgetView: View {
                 if document.mode == .native {
                     ZStack(alignment: .topTrailing) {
                         NativeWidgetView(design: document.native, data: entry.data, compact: family == .systemSmall, large: family == .systemLarge,
-                                         status: entry.status, reserveActionSpace: family != .systemSmall && document.api.enabled)
+                                         status: entry.status, reserveActionSpace: family != .systemSmall && document.api.enabled,
+                                         clockDate: entry.date)
                         if family != .systemSmall && document.api.enabled {
                             Button(intent: RefreshNativeIntent(id: document.id)) {
                                 Image(systemName: "arrow.clockwise").font(.system(size: 12, weight: .medium))
