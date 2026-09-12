@@ -47,16 +47,16 @@ final class NativePackageStore: ObservableObject {
     @Published private(set) var packages: [NativePackage] = []
     private let key = "native.installed.packages"
     init() { load() }
-    func install(name: String, nodes: [DesignerNode], connections: [DesignerConnection]) {
-        guard !nodes.isEmpty else { return }
-        let package = NativePackage(name: String(name.prefix(48)), nodes: Array(nodes.prefix(50)), connections: Array(connections.prefix(100)))
+    func install(name: String, nodes: [DesignerNode], connections: [DesignerConnection]) throws {
+        let package = NativePackage(name: String(name.prefix(48)), nodes: nodes, connections: connections)
+        try DesignerCodec.validate(package)
         packages.removeAll { $0.name.caseInsensitiveCompare(package.name) == .orderedSame }
         packages.insert(package, at: 0); packages = Array(packages.prefix(24)); save()
     }
     func remove(_ package: NativePackage) { packages.removeAll { $0.id == package.id }; save() }
     private func load() {
         guard let data = UserDefaults.standard.data(forKey: key), let decoded = try? JSONDecoder().decode([NativePackage].self, from: data) else { return }
-        packages = Array(decoded.prefix(24))
+        packages = Array(decoded.filter{(try? DesignerCodec.validate($0)) != nil}.prefix(24))
     }
     private func save() { if let data = try? JSONEncoder().encode(packages) { UserDefaults.standard.set(data, forKey: key) } }
 }

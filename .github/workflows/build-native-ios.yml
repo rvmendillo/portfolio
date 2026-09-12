@@ -3,9 +3,11 @@ name: Build Native iOS IPA
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, codex/rey-os-reimplementation]
     paths:
       - "ios-native/**"
+      - "shared/**"
+      - "scripts/prepare-native.py"
       - ".github/workflows/build-native-ios.yml"
 
 jobs:
@@ -21,8 +23,22 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
+      - name: Cache verified runtimes and model
+        uses: actions/cache@v4
+        with:
+          path: .dependency-cache
+          key: rey-native-llama-b10927-python-314-b11-qwen-ebb2015
+
+      - name: Prepare pinned on-device dependencies
+        run: python3 ../scripts/prepare-native.py
+
       - name: Generate native Xcode project
         run: xcodegen generate
+
+      - name: Test real Python and bundled local model on iOS Simulator
+        run: |
+          SIMULATOR_ID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for devices in d["devices"].values() for x in devices if x["name"].startswith("iPhone")))')
+          xcodebuild test -project ReyPortfolioNative.xcodeproj -scheme ReyPortfolioNative -destination "id=$SIMULATOR_ID" -derivedDataPath build-simulator -resultBundlePath native-tests.xcresult CODE_SIGNING_ALLOWED=NO
 
       - name: Build unsigned native application
         run: |
@@ -56,3 +72,11 @@ jobs:
           name: ReyPortfolioNative-unsigned-ipa
           path: ios-native/ReyPortfolioNative-unsigned.ipa
           if-no-files-found: error
+
+      - name: Upload native test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ReyOS-native-test-results
+          path: ios-native/native-tests.xcresult
+          if-no-files-found: ignore

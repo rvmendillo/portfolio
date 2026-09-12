@@ -1,0 +1,29 @@
+name: Verify Rey OS
+on:
+  push:
+    branches: [main, codex/rey-os-reimplementation]
+    paths: ['web/**', 'shared/**', 'tests/**', 'scripts/**', '*.js', '*.html', '*.css', 'package*.json', '.github/workflows/verify-rey-os.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - run: npm run test:wasm
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:web
+      - name: Package web application
+        run: zip -r ReyOS-web.zip index.html styles.css script.js sw.js icon.svg manifest.webmanifest assets
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ReyOS-web
+          path: ReyOS-web.zip

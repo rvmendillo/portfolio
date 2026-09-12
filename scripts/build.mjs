@@ -1,0 +1,15 @@
+import { build } from 'esbuild';
+import { mkdir, cp, copyFile, readFile, writeFile } from 'node:fs/promises';
+await mkdir('assets/runtime', {recursive:true});
+await build({entryPoints:['web/dev.js'], bundle:true, format:'iife', globalName:'ReyDev', outfile:'assets/dev.js', target:'es2022', minify:true, legalComments:'eof'});
+await cp('node_modules/pyodide', 'assets/runtime/pyodide', {recursive:true, filter:p=>!p.endsWith('.map') && !p.endsWith('.html')});
+await copyFile('node_modules/@wllama/wllama/esm/wasm/wllama.wasm','assets/runtime/wllama.wasm');
+await copyFile('web/python-worker.js','assets/runtime/python-worker.js');
+await copyFile('web/js-runner.html','assets/runtime/js-runner.html');
+await copyFile('shared/rey_runtime.py','assets/runtime/rey_runtime.py');
+await copyFile('shared/rey_compiler.py','assets/runtime/rey_compiler.py');
+await copyFile('web/dev.css','assets/dev.css');
+await mkdir('ios-native/Resources/app',{recursive:true});
+await copyFile('shared/rey_runtime.py','ios-native/Resources/app/rey_runtime.py');
+await copyFile('shared/rey_compiler.py','ios-native/Resources/app/rey_compiler.py');
+console.log('Rey OS assets and shared native Python modules built.');

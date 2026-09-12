@@ -40,3 +40,17 @@ body[data-motion=off] *,body[data-motion=off] *:before,body[data-motion=off] *:a
 
 .wallpaper{transition:transform 1.2s cubic-bezier(.2,.8,.2,1),filter .4s}.focus-mode .wallpaper{filter:saturate(.55) brightness(.7)}.focus-mode .desktop-status,.focus-mode .desktop-icons{opacity:.24;transition:opacity .35s}.desktop-icons.refreshed .desktop-icon{animation:iconRefresh .42s var(--ease) both}.desktop-icons.refreshed .desktop-icon:nth-child(2n){animation-delay:.035s}.thinking{opacity:.74}.thinking p:after{content:"";display:inline-block;width:1.1em;height:.25em;margin-left:.4em;border-radius:99px;background:currentColor;animation:thinkingPulse .8s ease-in-out infinite}.custom-app-surface output{display:block;white-space:pre-wrap;overflow:auto}.store-grid article>button:last-child:not(:nth-child(3)){min-width:30px;padding-inline:8px}
 @keyframes iconRefresh{0%{opacity:.2;transform:translateY(8px) scale(.94)}100%{opacity:1;transform:none}}@keyframes thinkingPulse{50%{width:2.2em;opacity:.35}}
+
+/* Touch windows remain movable and minimized apps remain recoverable. */
+@media(max-width:820px){
+.app-window:not(.maximized){left:var(--touch-left,4px);top:var(--touch-top,3px)}
+.app-window:not(.maximized){left:var(--touch-x,4px)!important;top:var(--touch-y,3px)!important}
+.app-window.minimized{opacity:0;pointer-events:none}
+.running-apps{display:flex;max-width:130px;overflow:auto;flex-shrink:1}
+.running-apps button{min-width:34px}
+.task-pinned{display:none}
+.system-tray{position:static;margin-left:auto}
+body[data-theme=ios] .window-controls button{width:24px;height:24px}
+}
+
+.file-document{grid-column:1/-1;min-width:0}.file-document pre{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6;padding:18px}.settings-app [hidden]{display:none!important}
