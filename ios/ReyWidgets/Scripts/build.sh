@@ -16,7 +16,7 @@ case "$rw_action" in
   build)
     xcodebuild -project ReyWidgets.xcodeproj -scheme ReyWidgets -configuration Debug \
       -destination 'generic/platform=iOS Simulator' -derivedDataPath build/DerivedData \
-      CODE_SIGNING_ALLOWED=NO build
+      CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY="-" build
     ;;
   test)
     rw_destination="${RW_DESTINATION:-}"
@@ -45,7 +45,7 @@ else:
       -resultBundlePath "build/TestResults-$(date +%s).xcresult" \
       -parallel-testing-enabled NO -test-timeouts-enabled YES \
       -default-test-execution-time-allowance 60 -maximum-test-execution-time-allowance 120 \
-      CODE_SIGNING_ALLOWED=NO test
+      CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY="-" test
     ;;
   archive)
     xcodebuild -project ReyWidgets.xcodeproj -scheme ReyWidgets -configuration Release \

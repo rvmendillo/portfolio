@@ -95,7 +95,7 @@ jobs:
         run: bash Scripts/build.sh build
 
       - name: Run native unit and UI tests
-        timeout-minutes: 10
+        timeout-minutes: 15
         run: bash Scripts/build.sh test
 
       - name: Upload unsigned IPA

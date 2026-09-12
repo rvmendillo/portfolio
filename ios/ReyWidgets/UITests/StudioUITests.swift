@@ -1,19 +1,27 @@
 import XCTest
 
 final class StudioUITests: XCTestCase {
-    @MainActor func testCreateNativeWidgetOpensEditor() throws {
+    @MainActor private func launchStudio() -> XCUIApplication {
+        continueAfterFailure = false
         let app = XCUIApplication(); app.launch()
+        let storageAlert = app.alerts["ReyWidgets"]
+        XCTAssertFalse(storageAlert.waitForExistence(timeout: 2), storageAlert.debugDescription)
+        return app
+    }
+    @MainActor func testCreateNativeWidgetOpensEditor() throws {
+        let app = launchStudio()
         XCTAssertTrue(app.buttons["Create widget"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Create widget"].isEnabled, "Shared storage must be available before creating a widget.")
         app.buttons["Create widget"].tap()
         let name = app.textFields["Name"]
-        XCTAssertTrue(name.waitForExistence(timeout: 3))
+        XCTAssertTrue(name.waitForExistence(timeout: 8))
         name.tap()
         name.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: "My widget".count) + "UI test widget")
         app.buttons["Create widget"].tap()
         XCTAssertTrue(app.buttons["Run preview"].waitForExistence(timeout: 5) || app.navigationBars["UI test widget"].exists)
     }
     @MainActor func testSettingsAndGGUFImportAreDiscoverable() throws {
-        let app = XCUIApplication(); app.launch()
+        let app = launchStudio()
         app.tabBars.buttons["Settings"].tap()
         XCTAssertTrue(app.staticTexts["Local intelligence"].waitForExistence(timeout: 5))
         app.swipeUp()
