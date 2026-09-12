@@ -13,9 +13,9 @@ xcodegen generate
 xcodebuild -project ReyPortfolioNative.xcodeproj -scheme ReyPortfolioNative -sdk iphoneos -configuration Release -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
 ```
 
-Dependency preparation verifies SHA-256 for CPython, llama.cpp and the 491,400,064-byte model. The app is substantially larger than the earlier UI-only edition. Allow space for weights, Python's standard library and framework slices during building/signing.
+Dependency preparation verifies SHA-256 for CPython, llama.cpp and the 491,400,064-byte model. On macOS it builds the missing Simulator framework from the matching pinned llama.cpp source revision and combines it with the release's device slice. It preserves the model/runtime license notices. Allow space for weights, Python's standard library and framework slices during building/signing.
 
-The target is iOS 18.0, covering iPhone 16 Plus. The bundle ID remains `com.reyvictor.portfolioos.native`. Device installation needs a signed build and matching provisioning profile. CI produces an unsigned IPA for signing; no new IPA was produced in this Linux review environment.
+The target is iOS 18.0, covering iPhone 16 Plus. The bundle ID remains `com.reyvictor.portfolioos.native`. Device installation needs a signed build and matching provisioning profile. The native GitHub Actions workflow has successfully built an unsigned IPA. See the root `REIMPLEMENTATION.md` for the final run and acceptance evidence.
 
 ## Implementation
 
@@ -29,6 +29,6 @@ Python is the executable language here. Other source can be edited/exported; it 
 
 ## Required native checks
 
-Run the `ReyPortfolioNative` XCTest scheme on Simulator. The native workflow runs tests before packaging: Python behavior/errors/budgets, compiler diagnostics, persistence, calculator overflow handling and actual bundled-model inference.
+Run the `ReyPortfolioNative` XCTest scheme on Simulator. The native workflow runs tests before packaging: Python behavior/errors/budgets, compiler diagnostics, persistence, calculator overflow handling and actual bundled-model inference. UI tests open and close all 13 app screens, edit/run/reopen saved source, and generate/review/apply/run real model code, including Stop and Unload. They use the app's motion-off preference and bounded timeouts. The workflow exports screenshots and an XCTest result summary.
 
 Then verify an installed iPhone build: model load and sustained generation, Stop, background/resume, file persistence/import/export, PDF display, designer connections/install/launch and memory recovery. Linux smoke tests do not verify Swift compilation, Metal, signing or iOS interaction.

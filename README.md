@@ -50,12 +50,15 @@ npm test
 npm run test:wasm
 npx playwright install --with-deps chromium
 npm run test:web
+npm run test:ai
 ```
 
-`npm test` executes Python and compiles/runs C++ fixtures. Java fixtures run when `javac` is installed. `test:wasm` exercises actual Pyodide. `test:web` covers apps, IDE runs/files, AI edit review, designer bindings, browser framing and mobile controls; its AI reply is explicitly a UI fixture. Native XCTest includes actual bundled-model inference.
+`npm test` executes Python and compiles/runs C++ fixtures. Java fixtures run when `javac` is installed; CI requires it. `test:wasm` exercises actual Pyodide. `test:web` covers apps, IDE runs/files, AI edit review, designer bindings, browser framing and mobile controls; its review-guard reply is explicitly a UI fixture.
+
+`test:ai` downloads and verifies the default GGUF, imports it into a real browser, generates and applies Python code, executes it, and checks cancellation/unloading. It also exercises the default browser download and an offline page restart with cached model inference and Python execution. Allow space for the downloaded weights and the browser cache. Native XCTest covers the actual bundled runtime/model; native UI tests exercise all 13 app screens, IDE editing/persistence and model-generated code through the interface.
 
 See `REIMPLEMENTATION.md` for evidence and pending checks. Passing some tests does not establish that every feature works.
 
 ## Workflows
 
-The verification branch runs web checks and the native build after publication. Pages deployment targets `main`; review and merge changes before updating the site. The earlier `ios/` web wrapper remains a separate target.
+The published `codex/rey-os-reimplementation` branch runs web checks and the native build. [Draft PR #4](https://github.com/rvmendillo/portfolio/pull/4) contains the changes. Pages deployment targets `main`; review and merge changes before updating the site. The earlier `ios/` web wrapper remains a separate target.

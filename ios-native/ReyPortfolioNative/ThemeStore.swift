@@ -10,7 +10,7 @@ final class ThemeStore: ObservableObject {
     init() {
         selectedTheme = PortfolioTheme(rawValue: defaults.string(forKey: "native.theme") ?? "windows") ?? .windows
         accentHex = defaults.string(forKey: "native.accent") ?? "59A8FF"
-        motionEnabled = defaults.object(forKey: "native.motion") as? Bool ?? true
+        motionEnabled = defaults.object(forKey: "native.motion") == nil ? true : defaults.bool(forKey: "native.motion")
         profileName = defaults.string(forKey: "native.profile") ?? "Rey Victor Mendillo"
     }
 

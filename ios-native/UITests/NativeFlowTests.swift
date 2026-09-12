@@ -7,6 +7,9 @@ final class NativeFlowTests: XCTestCase {
         continueAfterFailure = false
         XCUIDevice.shared.orientation = .portrait
         app = XCUIApplication()
+        // Exercise the real motion preference; continuous decorative animation
+        // should not determine when XCTest can interact with a control.
+        app.launchArguments = ["-native.motion", "NO"]
         app.launch()
         XCTAssertTrue(app.buttons["app-about"].waitForExistence(timeout: 15))
     }
@@ -60,7 +63,7 @@ final class NativeFlowTests: XCTestCase {
         for name in ["about", "resume", "projects", "files", "browser", "terminal", "ide", "designer", "transpiler", "assistant", "studio", "settings", "calculator"] {
             openApp(name)
             app.buttons["app-close"].tap()
-            XCTAssertTrue(app.buttons["app-about"].waitForExistence(timeout: 10))
+            wait(app.buttons["app-close"], NSPredicate(format: "exists == false"))
         }
     }
 

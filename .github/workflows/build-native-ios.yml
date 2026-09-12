@@ -47,7 +47,7 @@ jobs:
       - name: Test native navigation, IDE, Python and bundled local model
         run: |
           SIMULATOR_ID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); phones=[x for devices in d["devices"].values() for x in devices if x["name"].startswith("iPhone")]; print(next((x["udid"] for x in phones if x["name"]=="iPhone 16 Plus"), phones[0]["udid"]))')
-          xcodebuild test -project ReyPortfolioNative.xcodeproj -scheme ReyPortfolioNative -destination "id=$SIMULATOR_ID" -parallel-testing-enabled NO -derivedDataPath build-simulator -resultBundlePath native-tests.xcresult CODE_SIGNING_ALLOWED=NO
+          xcodebuild test -project ReyPortfolioNative.xcodeproj -scheme ReyPortfolioNative -destination "id=$SIMULATOR_ID" -parallel-testing-enabled NO -test-timeouts-enabled YES -default-test-execution-time-allowance 240 -maximum-test-execution-time-allowance 300 -derivedDataPath build-simulator -resultBundlePath native-tests.xcresult CODE_SIGNING_ALLOWED=NO
 
       - name: Export native screenshots and test summary
         if: always()
