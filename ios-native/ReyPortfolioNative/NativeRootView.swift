@@ -86,6 +86,7 @@ struct NativeDesktopView: View {
                 }
                 .padding(.horizontal, 18).padding(.top, 8)
             }
+            .accessibilityIdentifier("desktop-apps")
             VStack { Spacer(); nativeDock }
         }
         .foregroundStyle(theme.primary)
@@ -171,7 +172,7 @@ private struct AppTile: View {
                     .shadow(color: app.tint.opacity(0.28), radius: 12, y: 7)
                 Text(app.title).font(.caption.weight(.medium)).lineLimit(1).minimumScaleFactor(0.75)
             }.frame(maxWidth: .infinity)
-        }.buttonStyle(SpringButtonStyle())
+        }.buttonStyle(SpringButtonStyle()).accessibilityIdentifier("app-\(app.rawValue)")
     }
 }
 
@@ -186,6 +187,7 @@ struct NativeAppShell: View {
                 VStack(alignment: .leading, spacing: 1) { Text(app.title).font(.subheadline.bold()); Text(app.subtitle).font(.caption2).foregroundStyle(theme.secondary) }
                 Spacer()
                 Button(action: close) { Image(systemName: "xmark").font(.body.bold()).frame(width: 34, height: 34).background(.white.opacity(0.09), in: Circle()) }
+                    .accessibilityLabel("Close app").accessibilityIdentifier("app-close")
             }
             .padding(.horizontal, 14).padding(.vertical, 10).background(.ultraThinMaterial)
             Group {

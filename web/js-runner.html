@@ -1,0 +1,17 @@
+<!doctype html><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' blob:; worker-src blob:; connect-src 'none'">
+<script>
+let busy=false;
+addEventListener('message',event=>{
+  if(event.source!==parent||busy||typeof event.data?.code!=='string')return;
+  busy=true;
+  const prelude=`const lines=[];let count=0;const send=postMessage.bind(self);const render=x=>typeof x==='string'?x:String(JSON.stringify(x));self.console={log:(...args)=>{const s=args.map(render).join(' ');count+=s.length;if(count>64000)throw new Error('Output limit reached');lines.push(s)},error:(...args)=>console.log(...args),warn:(...args)=>console.log(...args)};const inputLines=${JSON.stringify(String(event.data.input||'').split('\n'))};self.prompt=()=>inputLines.shift()||'';self.fetch=()=>Promise.reject(new Error('Network is disabled for this program'));self.WebSocket=undefined;self.XMLHttpRequest=undefined;`;
+  const url=URL.createObjectURL(new Blob([prelude,'\ntry {\n',String(event.data.code),'\n;send({output:lines.join("\\n"),exitCode:0});} catch(e){send({output:lines.join("\\n")+"\\n"+e.name+": "+e.message,exitCode:1});}'],{type:'text/javascript'}));
+  const worker=new Worker(url);URL.revokeObjectURL(url);
+  let finished=false;
+  const done=result=>{if(finished)return;finished=true;clearTimeout(timer);worker.terminate();parent.postMessage({result},'*');};
+  worker.onmessage=e=>done(e.data);worker.onerror=e=>done({output:e.message,exitCode:1});
+  const timer=setTimeout(()=>done({output:'Execution stopped after 8 seconds.',exitCode:124}),8000);
+});
+parent.postMessage({ready:true},'*');
+</script>

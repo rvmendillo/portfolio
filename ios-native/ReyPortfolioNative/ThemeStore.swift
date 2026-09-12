@@ -10,7 +10,7 @@ final class ThemeStore: ObservableObject {
     init() {
         selectedTheme = PortfolioTheme(rawValue: defaults.string(forKey: "native.theme") ?? "windows") ?? .windows
         accentHex = defaults.string(forKey: "native.accent") ?? "59A8FF"
-        motionEnabled = defaults.object(forKey: "native.motion") as? Bool ?? true
+        motionEnabled = defaults.object(forKey: "native.motion") == nil ? true : defaults.bool(forKey: "native.motion")
         profileName = defaults.string(forKey: "native.profile") ?? "Rey Victor Mendillo"
     }
 
@@ -47,16 +47,16 @@ final class NativePackageStore: ObservableObject {
     @Published private(set) var packages: [NativePackage] = []
     private let key = "native.installed.packages"
     init() { load() }
-    func install(name: String, nodes: [DesignerNode], connections: [DesignerConnection]) {
-        guard !nodes.isEmpty else { return }
-        let package = NativePackage(name: String(name.prefix(48)), nodes: Array(nodes.prefix(50)), connections: Array(connections.prefix(100)))
+    func install(name: String, nodes: [DesignerNode], connections: [DesignerConnection]) throws {
+        let package = NativePackage(name: String(name.prefix(48)), nodes: nodes, connections: connections)
+        try DesignerCodec.validate(package)
         packages.removeAll { $0.name.caseInsensitiveCompare(package.name) == .orderedSame }
         packages.insert(package, at: 0); packages = Array(packages.prefix(24)); save()
     }
     func remove(_ package: NativePackage) { packages.removeAll { $0.id == package.id }; save() }
     private func load() {
         guard let data = UserDefaults.standard.data(forKey: key), let decoded = try? JSONDecoder().decode([NativePackage].self, from: data) else { return }
-        packages = Array(decoded.prefix(24))
+        packages = Array(decoded.filter{(try? DesignerCodec.validate($0)) != nil}.prefix(24))
     }
     private func save() { if let data = try? JSONEncoder().encode(packages) { UserDefaults.standard.set(data, forKey: key) } }
 }

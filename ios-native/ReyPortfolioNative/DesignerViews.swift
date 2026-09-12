@@ -10,6 +10,10 @@ struct NativeDesignerView: View {
     @State private var connectionStart: UUID?
     @State private var connectMode = false
     @State private var showCode = false
+    @State private var codeBuffer = ""
+    @State private var codeError = ""
+    @State private var installMessage = ""
+    @State private var showInstallMessage = false
     @State private var showPreview = false
     @State private var codeTarget = "YAML"
     @State private var dragOrigins: [UUID: CGPoint] = [:]
@@ -54,23 +58,29 @@ struct NativeDesignerView: View {
                     .padding(.horizontal)
                     .padding(.top, 10)
 
-                    ScrollView([.horizontal, .vertical]) {
-                        Text(generatedCode)
-                            .font(.system(.caption, design: .monospaced))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding()
+                    if codeTarget == "YAML" {
+                        TextEditor(text: $codeBuffer).font(.system(.caption, design: .monospaced)).autocorrectionDisabled().textInputAutocapitalization(.never).padding()
+                        if !codeError.isEmpty { Text(codeError).font(.caption).foregroundStyle(.red).padding(.horizontal) }
+                        Button("Apply YAML to canvas") {
+                            do { let project = try DesignerCodec.parse(codeBuffer); projectName = project.name; nodes = project.nodes; connections = project.connections; selectedID = nil; saveDraft(); codeError = ""; showCode = false }
+                            catch { codeError = error.localizedDescription }
+                        }.buttonStyle(.borderedProminent).padding()
+                    } else {
+                        ScrollView([.horizontal, .vertical]) { Text(generatedCode).font(.system(.caption, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding() }
                     }
                 }
                 .navigationTitle("Generated GUI Code")
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
-                        ShareLink(item: generatedCode) { Image(systemName: "square.and.arrow.up") }
+                        ShareLink(item: codeTarget == "YAML" ? codeBuffer : generatedCode) { Image(systemName: "square.and.arrow.up") }
                     }
                 }
             }
         }
         .sheet(isPresented: $showPreview) { NativePackagePreviewView(package: NativePackage(name: projectName, nodes: nodes, connections: connections)).environmentObject(theme).presentationDetents([.large]) }
         .onAppear(perform: loadDraft)
+        .onChange(of: projectName) { _ in saveDraft() }
+        .alert("App Studio",isPresented:$showInstallMessage){Button("OK",role:.cancel){}}message:{Text(installMessage)}
     }
 
     private var toolbar: some View {
@@ -78,7 +88,7 @@ struct NativeDesignerView: View {
             TextField("Project name", text: $projectName).font(.subheadline.bold()).textFieldStyle(.roundedBorder)
             Button { loadDemo() } label: { Image(systemName: "sparkles") }.buttonStyle(.bordered)
             Button { showPreview = true } label: { Image(systemName: "play.fill") }.buttonStyle(.borderedProminent).tint(theme.accent)
-            Menu { Button("Install in App Studio") { packages.install(name: projectName, nodes: nodes, connections: connections) }; Button("Clear canvas", role: .destructive) { nodes = []; connections = []; selectedID = nil; saveDraft() } } label: { Image(systemName: "ellipsis.circle") }
+            Menu { Button("Install in App Studio") { do{try packages.install(name: projectName, nodes: nodes, connections: connections);installMessage="Installed. Open App Studio to launch this design."}catch{installMessage=error.localizedDescription};showInstallMessage=true }; Button("Clear canvas", role: .destructive) { nodes = []; connections = []; selectedID = nil; saveDraft() } } label: { Image(systemName: "ellipsis.circle") }
         }.padding(10).background(.ultraThinMaterial)
     }
 
@@ -88,7 +98,7 @@ struct NativeDesignerView: View {
                 ForEach(DesignerNodeKind.allCases) { kind in Button { add(kind) } label: { Label(kind.title, systemImage: kind.symbol).font(.caption.bold()).padding(.horizontal, 10).padding(.vertical, 8).background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 10)) }.buttonStyle(SpringButtonStyle()) }
                 Divider().frame(height: 28)
                 Button { connectMode.toggle(); connectionStart = nil } label: { Label(connectMode ? "Connecting" : "Connect", systemImage: "point.topleft.down.to.point.bottomright.curvepath").font(.caption.bold()) }.buttonStyle(.borderedProminent).tint(connectMode ? .mint : theme.accent)
-                Button { showCode = true } label: { Label("Code", systemImage: "chevron.left.forwardslash.chevron.right").font(.caption.bold()) }.buttonStyle(.bordered)
+                Button { codeBuffer = yaml; codeError = ""; showCode = true } label: { Label("Code", systemImage: "chevron.left.forwardslash.chevron.right").font(.caption.bold()) }.buttonStyle(.bordered)
             }.padding(.horizontal, 10).padding(.vertical, 8)
         }
     }
@@ -97,7 +107,7 @@ struct NativeDesignerView: View {
         if let index = nodes.firstIndex(where: { $0.id == selectedID }) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 9) {
-                    TextField("ID", text: $nodes[index].name).frame(width: 115).textFieldStyle(.roundedBorder)
+                    TextField("ID", text: Binding(get:{nodes[index].name},set:{name in guard name.range(of:"^[A-Za-z_][A-Za-z0-9_]{0,31}$",options:.regularExpression) != nil,!nodes.contains(where:{$0.id != nodes[index].id && $0.name==name}) else{return};nodes[index].name=name;saveDraft()})).frame(width: 115).textFieldStyle(.roundedBorder)
                     TextField("Text", text: $nodes[index].text).frame(width: 150).textFieldStyle(.roundedBorder)
                     Picker("Action", selection: $nodes[index].operation) { ForEach(DesignerOperation.allCases) { Text($0.title).tag($0) } }.frame(width: 125)
                     if nodes[index].operation == .formula { TextField("input1 * (input2 + 3)", text: $nodes[index].formula).frame(width: 210).textFieldStyle(.roundedBorder) }
@@ -109,7 +119,7 @@ struct NativeDesignerView: View {
         }
     }
 
-    private func add(_ kind: DesignerNodeKind) { let count = nodes.filter { $0.kind == kind }.count + 1; var node = DesignerNode(kind: kind, index: count); node.x = 90 + Double(nodes.count % 3) * 110; node.y = 60 + Double(nodes.count % 4) * 55; nodes.append(node); selectedID = node.id; saveDraft() }
+    private func add(_ kind: DesignerNodeKind) { guard nodes.count<50 else{return};var count=1;while nodes.contains(where:{$0.name==DesignerNode(kind:kind,index:count).name}){count+=1};var node = DesignerNode(kind: kind, index: count); node.x = 90 + Double(nodes.count % 3) * 110; node.y = 60 + Double(nodes.count % 4) * 55; nodes.append(node); selectedID = node.id; saveDraft() }
     private func move(_ id: UUID, translation: CGSize, size: CGSize) { guard let index = nodes.firstIndex(where: { $0.id == id }) else { return }; let origin = dragOrigins[id] ?? CGPoint(x: nodes[index].x, y: nodes[index].y); dragOrigins[id] = origin; nodes[index].x = min(max(58, origin.x + translation.width), max(58, size.width - 58)); nodes[index].y = min(max(28, origin.y + translation.height), max(28, size.height - 28)); selectedID = id }
     private func tapNode(_ id: UUID) { selectedID = id; guard connectMode else { return }; if let start = connectionStart { if start != id && !connections.contains(where: { $0.from == start && $0.to == id }) { connections.append(DesignerConnection(from: start, to: id)) }; connectionStart = nil; saveDraft() } else { connectionStart = id } }
     private func delete(_ id: UUID) { nodes.removeAll { $0.id == id }; connections.removeAll { $0.from == id || $0.to == id }; selectedID = nil; saveDraft() }
@@ -128,9 +138,13 @@ struct NativeDesignerView: View {
     }
 
     private var yaml: String {
-        var lines = ["app: \"\(projectName.prefix(48))\"", "components:"]
-        for node in nodes { lines += ["  - id: \(node.name)", "    type: \(node.kind.rawValue)", "    text: \"\(node.text.replacingOccurrences(of: "\"", with: "'"))\"", "    x: \(Int(node.x))", "    y: \(Int(node.y))"]; if node.kind == .button { lines.append("    operation: \(node.operation.rawValue)"); if !node.formula.isEmpty { lines.append("    formula: \"\(node.formula)\"") } } }
-        lines.append("connections:"); for connection in connections { if let from = nodes.first(where: { $0.id == connection.from }), let to = nodes.first(where: { $0.id == connection.to }) { lines += ["  - from: \(from.name)", "    to: \(to.name)"] } }
+        var lines = ["app: " + DesignerCodec.quote(projectName), "components:"]
+        for node in nodes {
+            lines += ["  - id: \(node.name)", "    type: \(node.kind.rawValue)", "    text: " + DesignerCodec.quote(node.text), "    x: \(Int(node.x))", "    y: \(Int(node.y))"]
+            if node.kind == .button { lines.append("    operation: \(node.operation.rawValue)"); if !node.formula.isEmpty { lines.append("    formula: " + DesignerCodec.quote(node.formula)) } }
+        }
+        lines.append("connections:")
+        for connection in connections { if let from = nodes.first(where: { $0.id == connection.from }), let to = nodes.first(where: { $0.id == connection.to }) { lines += ["  - from: \(from.name)", "    to: \(to.name)"] } }
         return lines.joined(separator: "\n")
     }
     private func saveDraft() { let package = NativePackage(name: projectName, nodes: nodes, connections: connections); if let data = try? JSONEncoder().encode(package) { UserDefaults.standard.set(data, forKey: "native.designer.draft") } }
@@ -177,7 +191,7 @@ struct NativePackagePreviewView: View {
     private func execute(_ button: DesignerNode) {
         let incoming = package.connections.filter { $0.to == button.id }.compactMap { id in package.nodes.first(where: { $0.id == id.from }) }
         let outgoing = package.connections.filter { $0.from == button.id }.map(\.to)
-        let values = incoming.map { fields[$0.id] ?? "" }; var result = ""
+        let values = incoming.map { fields[$0.id] ?? outputs[$0.id] ?? ($0.kind == .input ? "" : $0.text) }; var result = ""
         switch button.operation {
         case .add: result = MathFormatter.string(values.reduce(0) { $0 + (Double($1) ?? 0) })
         case .subtract: result = MathFormatter.string(values.dropFirst().reduce(Double(values.first ?? "") ?? 0) { $0 - (Double($1) ?? 0) })

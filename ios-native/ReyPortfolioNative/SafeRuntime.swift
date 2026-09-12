@@ -62,54 +62,8 @@ enum SafeMath {
 
 enum MathFormatter {
     static func string(_ value: Double) -> String {
-        if value.rounded() == value { return String(Int(value)) }
+        if value.isFinite && value.rounded() == value && value > Double(Int.min) && value < Double(Int.max) { return String(Int(value)) }
         return String(format: "%.8f", value).replacingOccurrences(of: "0+$", with: "", options: .regularExpression).replacingOccurrences(of: "\\.$", with: "", options: .regularExpression)
-    }
-}
-
-enum SafeCodeRuntime {
-    static func run(_ source: String, language: String) -> String {
-        let lines = source.prefix(20_000).split(whereSeparator: \.isNewline).prefix(400)
-        var numbers: [String: Double] = [:]
-        var strings: [String: String] = [:]
-        var output: [String] = []
-        for raw in lines {
-            var line = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !line.isEmpty, !line.hasPrefix("#"), !line.hasPrefix("//") else { continue }
-            if line.hasSuffix(";") { line.removeLast() }
-            if let content = printableContent(line) {
-                output.append(content.split(separator: ",", omittingEmptySubsequences: false).map { render(String($0), numbers: numbers, strings: strings) }.joined(separator: " "))
-                continue
-            }
-            let pieces = line.split(separator: "=", maxSplits: 1).map(String.init)
-            if pieces.count == 2, !line.contains("==") {
-                let rawName = pieces[0].trimmingCharacters(in: .whitespaces).split(separator: " ").last.map(String.init) ?? "value"
-                let name = rawName.replacingOccurrences(of: "self.", with: "")
-                let value = pieces[1].trimmingCharacters(in: .whitespaces)
-                if let number = try? SafeMath.evaluate(value, variables: numbers) { numbers[name] = number }
-                else { strings[name] = unquote(value) }
-            }
-        }
-        return output.isEmpty ? "\(language) source parsed safely. No printable output." : output.joined(separator: "\n")
-    }
-    private static func printableContent(_ line: String) -> String? {
-        let wrappers = ["print(", "console.log(", "System.out.println("]
-        for wrapper in wrappers where line.hasPrefix(wrapper) && line.hasSuffix(")") { return String(line.dropFirst(wrapper.count).dropLast()) }
-        if let range = line.range(of: "cout <<") { return String(line[range.upperBound...]).replacingOccurrences(of: "<< endl", with: "").replacingOccurrences(of: "<< std::endl", with: "").replacingOccurrences(of: "<<", with: ",") }
-        if let range = line.range(of: "std::cout <<") { return String(line[range.upperBound...]).replacingOccurrences(of: "<< std::endl", with: "").replacingOccurrences(of: "<<", with: ",") }
-        return nil
-    }
-    private static func render(_ raw: String, numbers: [String: Double], strings: [String: String]) -> String {
-        let value = raw.trimmingCharacters(in: .whitespaces)
-        if (value.hasPrefix("\"") && value.hasSuffix("\"")) || (value.hasPrefix("'") && value.hasSuffix("'")) { return unquote(value) }
-        if let string = strings[value] { return string }
-        if let number = numbers[value] { return MathFormatter.string(number) }
-        if let number = try? SafeMath.evaluate(value, variables: numbers) { return MathFormatter.string(number) }
-        return String(value.prefix(300))
-    }
-    private static func unquote(_ value: String) -> String {
-        guard value.count >= 2, let first = value.first, let last = value.last, (first == "\"" && last == "\"") || (first == "'" && last == "'") else { return value }
-        return String(value.dropFirst().dropLast()).replacingOccurrences(of: "\\n", with: "\n")
     }
 }
 
@@ -127,8 +81,8 @@ enum NativeCommandEngine {
         case "date": return Date().formatted(date: .complete, time: .standard)
         case "calc": do { return MathFormatter.string(try SafeMath.evaluate(args)) } catch { return error.localizedDescription }
         case "theme": if let value = PortfolioTheme(rawValue: args.lowercased()) { theme.selectedTheme = value; return "Theme changed to \(value.title)." }; return "Choose windows, ios, or resume."
-        case "security": return "Native SwiftUI · no eval · local-only settings · safe arithmetic · bounded inputs · validated packages"
-        case "neofetch": return "▣ Rey Portfolio Native\nTheme: \(theme.selectedTheme.title)\nRuntime: SwiftUI\nProfile: \(theme.profileName)\nLocal AI: Ready"
+        case "security": return "Native SwiftUI · local settings · bounded execution · validated packages · review code before running"
+        case "neofetch": return "▣ Rey Portfolio Native\nTheme: \(theme.selectedTheme.title)\nRuntime: SwiftUI\nProfile: \(theme.profileName)\nLocal AI: Load the bundled model in the assistant"
         case "echo": return String(args.prefix(600))
         case "clear": return "__CLEAR__"
         default: return "'\(String(name.prefix(40)))' is not recognized. Type 'help'."
@@ -147,9 +101,9 @@ enum NativeTranspiler {
         if input == "GUI YAML" { return guiTarget(source, target: target) }
         let python = input == "Python" ? source : humanToPython(source, filipino: input.contains("FIL"), customPrint: customPrint)
         if target == "Python" { return python }
-        return target == "C++" ? pythonToCpp(python) : pythonToJava(python)
+        return "Open Transpiler to compile Python to Java or C++ with the AST compiler."
     }
-    private static func humanToPython(_ source: String, filipino: Bool, customPrint: String) -> String {
+    static func humanToPython(_ source: String, filipino: Bool, customPrint: String) -> String {
         let say = filipino ? ["ipakita", "ilabas"] : ["say", "show", "display", customPrint.lowercased()].filter { !$0.isEmpty }
         let setWords = filipino ? ["itakda", "ilagay"] : ["set"]
         let endWords = filipino ? ["wakas", "tapusin"] : ["end"]
@@ -170,16 +124,6 @@ enum NativeTranspiler {
             result.append(String(repeating: "    ", count: indent) + compiled); if opens { indent += 1 }
         }
         return result.joined(separator: "\n")
-    }
-    private static func pythonToJava(_ source: String) -> String {
-        var out = ["// Generated locally by Rey Portfolio Native", "import java.util.*;", "", "public class Main {", "  public static void main(String[] args) {"]
-        for raw in source.split(whereSeparator: \.isNewline) { let line = raw.trimmingCharacters(in: .whitespaces); if line.hasPrefix("print(") { out.append("    System.out.println(\(line.dropFirst(6).dropLast()));") } else if line.contains(" = ") { out.append("    var \(line.replacingOccurrences(of: "True", with: "true").replacingOccurrences(of: "False", with: "false"));") } else if line.hasPrefix("for ") { out.append("    // Native Java loop: \(line)") } else if line.hasPrefix("class ") || line.hasPrefix("def ") || line.hasPrefix("@") { out.append("    // Object/function feature: \(line)") } }
-        out += ["  }", "}"]; return out.joined(separator: "\n")
-    }
-    private static func pythonToCpp(_ source: String) -> String {
-        var out = ["// Generated locally by Rey Portfolio Native", "#include <iostream>", "#include <string>", "#include <vector>", "", "int main() {"]
-        for raw in source.split(whereSeparator: \.isNewline) { let line = raw.trimmingCharacters(in: .whitespaces); if line.hasPrefix("print(") { out.append("  std::cout << \(line.dropFirst(6).dropLast()) << std::endl;") } else if line.contains(" = ") { out.append("  auto \(line);") } else if line.hasPrefix("for ") { out.append("  // Native C++ loop: \(line)") } else if line.hasPrefix("class ") || line.hasPrefix("def ") || line.hasPrefix("@") { out.append("  // Object/function feature: \(line)") } }
-        out += ["  return 0;", "}"]; return out.joined(separator: "\n")
     }
     private struct GUIComponent {
         var id = "component"

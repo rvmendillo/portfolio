@@ -32,7 +32,7 @@ enum NativeAppKind: String, CaseIterable, Identifiable {
         case .ide: return "Code workspace"
         case .designer: return "Visual app builder"
         case .transpiler: return "Python & HumanCode"
-        case .assistant: return "Offline knowledge"
+        case .assistant: return "On-device coding model"
         case .studio: return "Installed designs"
         case .settings: return "Themes & profile"
         case .calculator: return "Safe arithmetic"
