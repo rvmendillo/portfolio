@@ -4,12 +4,12 @@ import {mkdir,writeFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 const server=spawn('python3',['-m','http.server','8765','--bind','127.0.0.1'],{stdio:'ignore'});
 const base='http://127.0.0.1:8765';
-let browser;
+let browser,page;
 const results=[];
 try{
   for(let i=0;i<50;i++){try{if((await fetch(base)).ok)break}catch{}await new Promise(r=>setTimeout(r,100));}
   browser=await chromium.launch({headless:true});
-  const page=await browser.newPage({viewport:{width:1440,height:1000}});
+  page=await browser.newPage({viewport:{width:1440,height:1000}});
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto(base);await page.locator('#bootSkip').click();
   async function check(name,fn){await fn();results.push(name);console.log('PASS',name)}
@@ -45,7 +45,8 @@ try{
   await check('Browser uses a sandboxed iframe for external URLs',async()=>{await open('browser');await page.locator('[data-browser-address]').fill('https://example.com');await page.locator('[data-browser-go]').click();const frame=page.locator('.browser-embed');assert.equal(await frame.getAttribute('src'),'https://example.com/');assert.match(await frame.getAttribute('sandbox'),/allow-scripts/);assert.doesNotMatch(await frame.getAttribute('sandbox'),/allow-top-navigation/);await close('browser')});
   await check('Window minimize, restore, maximize and phone-width drag',async()=>{
     await page.setViewportSize({width:430,height:932});await open('calculator');const win=page.locator('.app-window[data-app="calculator"]');
-    const before=await win.boundingBox();const bar=await win.locator('.titlebar').boundingBox();await page.mouse.move(bar.x+65,bar.y+20);await page.mouse.down();await page.mouse.move(bar.x+90,bar.y+110,{steps:6});await page.mouse.up();const after=await win.boundingBox();assert.ok(after.y>before.y+20);
+    await win.evaluate(el=>Promise.all(el.getAnimations().filter(a=>a.effect.getTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{}))));
+    const before=await win.boundingBox();const bar=await win.locator('.titlebar').boundingBox();await page.mouse.move(bar.x+65,bar.y+20);await page.mouse.down();await page.mouse.move(bar.x+90,bar.y+110,{steps:6});await page.mouse.up();const after=await win.boundingBox();assert.ok(after.y>before.y+20,JSON.stringify({before,after}));
     await win.locator('[data-action="minimize"]').click();await page.locator('#runningApps button[data-app="calculator"]').click();assert.ok(!(await win.getAttribute('class')).includes('minimized'));
     await win.locator('[data-action="maximize"]').click();assert.match(await win.getAttribute('class'),/maximized/);
     await page.waitForFunction(()=>{const r=document.querySelector('.app-window[data-app="calculator"]').getBoundingClientRect();return r.x<=5&&r.right<=innerWidth});
@@ -55,4 +56,9 @@ try{
   assert.deepEqual(errors,[],'Uncaught browser errors');
   await writeFile('.test-output/web-results.json',JSON.stringify({passed:results,uncaughtErrors:errors},null,2));
   console.log(`${results.length} browser checks passed.`);
+}catch(error){
+  await mkdir('.test-output',{recursive:true});
+  await writeFile('.test-output/web-failure.json',JSON.stringify({passed:results,error:String(error)},null,2));
+  await page?.screenshot({path:'.test-output/web-failure.png'}).catch(()=>{});
+  throw error;
 }finally{await browser?.close();server.kill();}
