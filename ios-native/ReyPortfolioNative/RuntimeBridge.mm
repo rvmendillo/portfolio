@@ -82,7 +82,6 @@ static PyMethodDef RYStopMethod={"_rey_should_stop",RYShouldStop,METH_NOARGS,"Ch
 #else
     params.n_gpu_layers=99;
 #endif
-    params.use_mmap=true;
     _model=llama_model_load_from_file(path.UTF8String,params);
     if(!_model){if(error)*error=RYError(@"The GGUF model could not be loaded. Check available memory and the model file.");return NO;}
     auto context=llama_context_default_params();context.n_ctx=4096;context.n_batch=256;context.n_ubatch=128;
