@@ -7,7 +7,7 @@ on:
       - .github/workflows/build-reyforge-2-7.yml
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   build:
     runs-on: macos-26
@@ -85,9 +85,21 @@ jobs:
           ditto -c -k --sequesterRsrc --keepParent Payload ReyForge-2.7-unsigned.ipa
           unzip -t ReyForge-2.7-unsigned.ipa
       - uses: actions/upload-artifact@v4
+        id: upload
+        continue-on-error: true
         with:
           name: ReyForge-2.7-unsigned-ipa
           path: ipa-builder-build/ReyForge-2.7-unsigned.ipa
           if-no-files-found: error
           compression-level: 0
           retention-days: 30
+      - name: Preserve IPA if artifact storage is unavailable
+        if: steps.upload.outcome == 'failure'
+        run: |
+          mkdir -p builds
+          cp ipa-builder-build/ReyForge-2.7-unsigned.ipa builds/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add builds/ReyForge-2.7-unsigned.ipa
+          git commit -m "Preserve ReyForge 2.7 IPA from build ${GITHUB_RUN_ID}"
+          git push origin "HEAD:refs/heads/codex/reyforge-build-${GITHUB_RUN_ID}"

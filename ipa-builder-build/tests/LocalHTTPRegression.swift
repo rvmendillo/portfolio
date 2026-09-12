@@ -6,9 +6,7 @@ private final class HTTPHarness: @unchecked Sendable {
     let artifact: SignedIPA
     init(artifact: SignedIPA) throws {
         self.artifact = artifact
-        let parameters = NWParameters.tcp
-        parameters.requiredLocalEndpoint = .hostPort(host: "127.0.0.1", port: .any)
-        listener = try NWListener(using: parameters, on: .any)
+        listener = try LocalIPAHTTP.makeListener()
     }
     func start() async throws -> URL {
         try await withCheckedThrowingContinuation { continuation in

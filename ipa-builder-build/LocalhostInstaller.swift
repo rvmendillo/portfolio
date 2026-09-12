@@ -30,9 +30,7 @@ final class LocalhostInstallManager: ObservableObject {
         let id = UUID(), token = UUID().uuidString.lowercased()
         sessionID = id
         do {
-            let parameters = NWParameters.tcp
-            parameters.requiredLocalEndpoint = .hostPort(host: "127.0.0.1", port: .any)
-            let server = try NWListener(using: parameters, on: .any)
+            let server = try LocalIPAHTTP.makeListener()
             listener = server
             server.newConnectionHandler = { [weak self] connection in
                 Task { @MainActor in
@@ -109,6 +107,12 @@ private struct InstallContext: Sendable {
 }
 
 private enum LocalIPAHTTP {
+    static func makeListener() throws -> NWListener {
+        let parameters = NWParameters.tcp
+        let port = NWEndpoint.Port(rawValue: UInt16.random(in: 42000...60000))!
+        parameters.requiredLocalEndpoint = .hostPort(host: "127.0.0.1", port: port)
+        return try NWListener(using: parameters)
+    }
     static func serve(_ connection: NWConnection, context: InstallContext, finished: @escaping @Sendable () -> Void) {
         connection.stateUpdateHandler = { state in
             switch state {
