@@ -24,13 +24,21 @@ jobs:
         run: brew install xcodegen
 
       - name: Cache verified runtimes and model
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
+        id: native-cache
         with:
           path: .dependency-cache
-          key: rey-native-llama-b10927-python-314-b11-qwen-ebb2015
+          key: rey-native-device-simulator-b10927-python-314-b11-qwen-ebb2015
 
       - name: Prepare pinned on-device dependencies
         run: python3 ../scripts/prepare-native.py
+
+      - name: Save compiled Simulator runtime and model cache
+        if: steps.native-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .dependency-cache
+          key: rey-native-device-simulator-b10927-python-314-b11-qwen-ebb2015
 
       - name: Generate native Xcode project
         run: xcodegen generate

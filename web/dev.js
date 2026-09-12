@@ -40,7 +40,7 @@ function aiPanel({context=()=>'',apply,knowledge=''}) {
     const query=prompt.value.trim();if(!query||localAI.busy)return;owned=true;
     const snapshot=include.checked?context():null;
     const user=el('p','dev-chat-user',query),answer=el('div','dev-chat-answer'),text=el('pre',null,'Reading your request…');answer.append(text);messages.append(user,answer);prompt.value='';
-    const content=query+(snapshot?'\n\nCurrent file '+snapshot.name+':\n```\n'+snapshot.code.slice(0,9000)+'\n```':'');
+    const content=(snapshot?'Current file '+snapshot.name+':\n```'+mode(snapshot.name).toLowerCase()+'\n'+snapshot.code.slice(0,9000)+'\n```\n\n':'')+'User request: '+query;
     try {
       const result=await localAI.generate([{role:'system',content:systemPrompt+(knowledge?'\nPortfolio facts:\n'+knowledge:'')},...history.slice(-4),{role:'user',content}],value=>{if(!disposed){text.textContent=value;messages.scrollTop=messages.scrollHeight}});
       history.push({role:'user',content},{role:'assistant',content:result});

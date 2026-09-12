@@ -36,7 +36,7 @@ export class LocalAI extends EventTarget {
     this.busy=true;this.controller=new AbortController();this.dispatchEvent(new Event('change'));
     let text='';
     try {
-      const chunks=await this.engine.createChatCompletion({messages,stream:true,temperature:0.2,max_tokens:768,abortSignal:this.controller.signal});
+      const chunks=await this.engine.createChatCompletion({messages,stream:true,temperature:0,max_tokens:768,abortSignal:this.controller.signal});
       for await(const chunk of chunks) {text+=chunk.choices?.[0]?.delta?.content||'';onText?.(text);}
       if(!text.trim())throw new Error('The model returned no text. Try a shorter prompt.');
       return text;

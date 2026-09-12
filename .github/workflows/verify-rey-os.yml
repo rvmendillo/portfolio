@@ -30,6 +30,7 @@ jobs:
         with:
           name: ReyOS-web-test-evidence
           path: .test-output/
+          include-hidden-files: true
           if-no-files-found: ignore
       - name: Package web application
         run: zip -r ReyOS-web.zip index.html styles.css script.js sw.js icon.svg manifest.webmanifest assets
