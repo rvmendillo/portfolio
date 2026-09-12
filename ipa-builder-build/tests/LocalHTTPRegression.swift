@@ -10,14 +10,17 @@ private final class HTTPHarness: @unchecked Sendable {
     }
     func start() async throws -> URL {
         try await withCheckedThrowingContinuation { continuation in
+            // Network.framework requires the connection handler before start().
+            listener.newConnectionHandler = { [weak self] connection in
+                guard let self, let port = self.listener.port else { connection.cancel(); return }
+                let base = URL(string: "http://127.0.0.1:\(port.rawValue)/test-token/")!
+                let context = InstallContext(artifact: self.artifact, token: "test-token", base: base)
+                LocalIPAHTTP.serve(connection, context: context, finished: {})
+            }
             listener.stateUpdateHandler = { [self] state in
                 switch state {
                 case .ready:
                     let base = URL(string: "http://127.0.0.1:\(listener.port!.rawValue)/test-token/")!
-                    let context = InstallContext(artifact: artifact, token: "test-token", base: base)
-                    listener.newConnectionHandler = { connection in
-                        LocalIPAHTTP.serve(connection, context: context, finished: {})
-                    }
                     listener.stateUpdateHandler = nil
                     continuation.resume(returning: base)
                 case .failed(let error):
