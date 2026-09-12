@@ -21,12 +21,31 @@ case "$rw_action" in
   test)
     rw_destination="${RW_DESTINATION:-}"
     if [[ -z "$rw_destination" ]]; then
-      rw_device_id="$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(v["udid"] for key,items in d["devices"].items() if "iOS" in key for v in items if "iPhone" in v["name"]))')"
+      # simctl lists older runtimes first. Prefer the newest installed iOS;
+      # iOS 18.5 has a known libswiftWebKit loader bug for older deployment targets.
+      rw_device_id="$(xcrun simctl list devices available -j | python3 -c '
+import json, re, sys
+devices = json.load(sys.stdin)["devices"]
+runtimes = sorted((key for key in devices if "iOS-" in key),
+                  key=lambda key: tuple(map(int, re.findall(r"\d+", key))), reverse=True)
+for runtime in runtimes:
+    phones = [device for device in devices[runtime] if "iPhone" in device["name"]]
+    if phones:
+        print("Testing on " + runtime + " / " + phones[0]["name"], file=sys.stderr)
+        print(phones[0]["udid"])
+        break
+else:
+    raise SystemExit("Install an iOS simulator runtime in Xcode before testing.")
+')"
+      xcrun simctl bootstatus "$rw_device_id" -b
       rw_destination="platform=iOS Simulator,id=$rw_device_id"
     fi
     xcodebuild -project ReyWidgets.xcodeproj -scheme ReyWidgets -configuration Debug \
       -destination "$rw_destination" -derivedDataPath build/DerivedData \
-      -resultBundlePath "build/TestResults-$(date +%s).xcresult" CODE_SIGNING_ALLOWED=NO test
+      -resultBundlePath "build/TestResults-$(date +%s).xcresult" \
+      -parallel-testing-enabled NO -test-timeouts-enabled YES \
+      -default-test-execution-time-allowance 60 -maximum-test-execution-time-allowance 120 \
+      CODE_SIGNING_ALLOWED=NO test
     ;;
   archive)
     xcodebuild -project ReyWidgets.xcodeproj -scheme ReyWidgets -configuration Release \
