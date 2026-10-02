@@ -8,6 +8,10 @@ on:
       - 'budgetflow-build/branded-source.b64'
       - '.github/workflows/build-budgetflow-ipa.yml'
 
+concurrency:
+  group: budgetflow-build-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
@@ -54,6 +58,7 @@ jobs:
           /usr/bin/zip -qry "$GITHUB_WORKSPACE/BudgetFlow-Nexus-local-import.ipa" Payload
 
       - name: Capture iPhone previews
+        if: ${{ !contains(github.event.head_commit.message, '[skip-preview]') }}
         continue-on-error: true
         shell: bash
         run: |
