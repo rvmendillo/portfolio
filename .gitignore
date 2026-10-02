@@ -3,3 +3,20 @@ ios/Payload/
 ios/*.xcodeproj/
 ios/*.ipa
 
+
+node_modules/
+.dependency-cache/
+ios-native/Vendor/
+ios-native/Resources/Models/
+ios-native/build/
+ios-native/build-simulator/
+ios-native/*.xcodeproj/
+ios-native/*.ipa
+ios-native/Payload/
+assets/runtime/pyodide/
+assets/runtime/wllama.wasm
+assets/dev.js
+assets/dev.js.LEGAL.txt
+__pycache__/
+*.xcresult/
+.test-output/
