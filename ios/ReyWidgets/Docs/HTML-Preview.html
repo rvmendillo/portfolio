@@ -1,0 +1,282 @@
+<!doctype html><html><head><meta charset="utf-8"><title>ReyWidgets · HTML template checks</title><style>
+body{margin:0;padding:32px;background:#0c1019;color:#edf3fa;font-family:system-ui}header{max-width:1050px;margin:0 auto 28px}h1{font-size:34px;font-weight:550;letter-spacing:-1px;margin:4px 0 10px}p{font-size:13px;color:#9aa6bd}small{font:10px monospace;letter-spacing:2px;color:#b4ff76}.grid{display:grid;grid-template-columns:170px 364px 364px;gap:28px;max-width:1054px;margin:auto}.label{font:10px monospace;color:#9aa6bd;margin-bottom:12px}iframe{border:0;border-radius:24px;display:block}pre{white-space:pre-wrap;max-width:1054px;margin:28px auto;font:11px monospace;color:#b4ff76;line-height:1.7}
+</style></head><body><header><small>REYWIDGETS / ACTUAL HTML TEMPLATES</small><h1>A small canvas. A personal world.</h1><p>Small, medium and large previews from the app source. Sample API values. Desktop browser rendering; iOS testing is separate.</p></header><div class="grid"><article><div class="label">Made Of Possibility · small</div><iframe id="f0" title="made-of-possibility small" width="170" height="170" srcdoc="&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width,initial-scale=1,maximum-scale=1&quot;&gt;
+&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27;; style-src &#x27;unsafe-inline&#x27;; img-src data: blob:; font-src data:; connect-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
+&lt;style&gt;html,body{width:100%;height:100%;margin:0;overflow:hidden;box-sizing:border-box}*{box-sizing:inherit}&lt;/style&gt;
+&lt;style&gt;body{background:#deebcf;color:#1d3023;font-family:system-ui}
+main{height:100%;padding:20px 24px;display:flex;flex-direction:column;position:relative}
+.top,.bottom{display:flex;align-items:center;gap:7px;font:9px ui-monospace,monospace;letter-spacing:1px}
+.dot{width:6px;height:6px;background:#3a7039;border-radius:100%}.star{margin-left:auto;font-size:26px}
+h1{font-size:38px;line-height:.94;letter-spacing:-1.8px;margin:10px 0 8px;font-weight:650}
+h1 br{display:none}em{font-family:Georgia,serif;font-weight:400}
+p{font-size:11px;margin:0;max-width:220px}.bottom{margin-top:auto;font-size:7px;justify-content:space-between;opacity:.65}
+@media(max-width:220px){main{padding:14px}.top{font-size:7px;letter-spacing:0}.star{font-size:20px}h1{font-size:29px}h1 br{display:block}p{font-size:9px}.bottom{font-size:6px}}
+@media(min-height:250px){h1{font-size:68px;margin:30px 0 20px}h1 br{display:block}p{font-size:16px}.top{font-size:11px}}&lt;/style&gt;
+&lt;script&gt;
+window.__rwError = null;
+window.addEventListener(&#x27;error&#x27;,e=&gt;{window.__rwError=e.message;});
+window.addEventListener(&#x27;unhandledrejection&#x27;,e=&gt;{window.__rwError=String(e.reason);});
+window.widget = {
+  data: JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(&#x27;eyJtZXNzYWdlIjogIk1ha2Ugc29tZXRoaW5nIHlvdXJzLiJ9&#x27;),c=&gt;c.charCodeAt(0)))),
+  size: &#x27;small&#x27;, width: 170, height: 170,
+  ready: Promise.resolve(),
+  get(pointer, fallback=&#x27;—&#x27;) {
+    if (pointer === &#x27;&#x27;) return this.data;
+    if (!pointer.startsWith(&#x27;/&#x27;)) return fallback;
+    let node = this.data;
+    for (const key of pointer.slice(1).split(&#x27;/&#x27;).map(k=&gt;k.replace(/~1/g,&#x27;/&#x27;).replace(/~0/g,&#x27;~&#x27;))) {
+      if (node == null || !Object.prototype.hasOwnProperty.call(Object(node),key)) return fallback;
+      node = node[key];
+    }
+    return node == null ? fallback : node;
+  }
+};
+document.addEventListener(&#x27;DOMContentLoaded&#x27;,()=&gt;{
+  for (const el of document.querySelectorAll(&#x27;[data-bind]&#x27;)) {
+    el.textContent = String(widget.get(el.getAttribute(&#x27;data-bind&#x27;)));
+  }
+});
+&lt;/script&gt;&lt;/head&gt;&lt;body&gt;&lt;main&gt;
+  &lt;div class=&quot;top&quot;&gt;&lt;span class=&quot;dot&quot;&gt;&lt;/span&gt; A LITTLE REMINDER &lt;span class=&quot;star&quot;&gt;✳&lt;/span&gt;&lt;/div&gt;
+  &lt;h1&gt;Make it&lt;br&gt; &lt;em&gt;yours.&lt;/em&gt;&lt;/h1&gt;
+  &lt;p data-bind=&quot;/message&quot;&gt;&lt;/p&gt;
+  &lt;div class=&quot;bottom&quot;&gt;&lt;span&gt;REYWIDGETS STUDIO&lt;/span&gt;&lt;span&gt;↗&lt;/span&gt;&lt;/div&gt;
+&lt;/main&gt;
+&lt;script&gt;document.addEventListener(&#x27;DOMContentLoaded&#x27;,()=&gt;{
+// Edit freely. No internet access is needed for this design.
+
+});&lt;/script&gt;
+&lt;/body&gt;&lt;/html&gt;"></iframe></article><article><div class="label">Made Of Possibility · medium</div><iframe id="f1" title="made-of-possibility medium" width="364" height="170" srcdoc="&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width,initial-scale=1,maximum-scale=1&quot;&gt;
+&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27;; style-src &#x27;unsafe-inline&#x27;; img-src data: blob:; font-src data:; connect-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
+&lt;style&gt;html,body{width:100%;height:100%;margin:0;overflow:hidden;box-sizing:border-box}*{box-sizing:inherit}&lt;/style&gt;
+&lt;style&gt;body{background:#deebcf;color:#1d3023;font-family:system-ui}
+main{height:100%;padding:20px 24px;display:flex;flex-direction:column;position:relative}
+.top,.bottom{display:flex;align-items:center;gap:7px;font:9px ui-monospace,monospace;letter-spacing:1px}
+.dot{width:6px;height:6px;background:#3a7039;border-radius:100%}.star{margin-left:auto;font-size:26px}
+h1{font-size:38px;line-height:.94;letter-spacing:-1.8px;margin:10px 0 8px;font-weight:650}
+h1 br{display:none}em{font-family:Georgia,serif;font-weight:400}
+p{font-size:11px;margin:0;max-width:220px}.bottom{margin-top:auto;font-size:7px;justify-content:space-between;opacity:.65}
+@media(max-width:220px){main{padding:14px}.top{font-size:7px;letter-spacing:0}.star{font-size:20px}h1{font-size:29px}h1 br{display:block}p{font-size:9px}.bottom{font-size:6px}}
+@media(min-height:250px){h1{font-size:68px;margin:30px 0 20px}h1 br{display:block}p{font-size:16px}.top{font-size:11px}}&lt;/style&gt;
+&lt;script&gt;
+window.__rwError = null;
+window.addEventListener(&#x27;error&#x27;,e=&gt;{window.__rwError=e.message;});
+window.addEventListener(&#x27;unhandledrejection&#x27;,e=&gt;{window.__rwError=String(e.reason);});
+window.widget = {
+  data: JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(&#x27;eyJtZXNzYWdlIjogIk1ha2Ugc29tZXRoaW5nIHlvdXJzLiJ9&#x27;),c=&gt;c.charCodeAt(0)))),
+  size: &#x27;medium&#x27;, width: 364, height: 170,
+  ready: Promise.resolve(),
+  get(pointer, fallback=&#x27;—&#x27;) {
+    if (pointer === &#x27;&#x27;) return this.data;
+    if (!pointer.startsWith(&#x27;/&#x27;)) return fallback;
+    let node = this.data;
+    for (const key of pointer.slice(1).split(&#x27;/&#x27;).map(k=&gt;k.replace(/~1/g,&#x27;/&#x27;).replace(/~0/g,&#x27;~&#x27;))) {
+      if (node == null || !Object.prototype.hasOwnProperty.call(Object(node),key)) return fallback;
+      node = node[key];
+    }
+    return node == null ? fallback : node;
+  }
+};
+document.addEventListener(&#x27;DOMContentLoaded&#x27;,()=&gt;{
+  for (const el of document.querySelectorAll(&#x27;[data-bind]&#x27;)) {
+    el.textContent = String(widget.get(el.getAttribute(&#x27;data-bind&#x27;)));
+  }
+});
+&lt;/script&gt;&lt;/head&gt;&lt;body&gt;&lt;main&gt;
+  &lt;div class=&quot;top&quot;&gt;&lt;span class=&quot;dot&quot;&gt;&lt;/span&gt; A LITTLE REMINDER &lt;span class=&quot;star&quot;&gt;✳&lt;/span&gt;&lt;/div&gt;
+  &lt;h1&gt;Make it&lt;br&gt; &lt;em&gt;yours.&lt;/em&gt;&lt;/h1&gt;
+  &lt;p data-bind=&quot;/message&quot;&gt;&lt;/p&gt;
+  &lt;div class=&quot;bottom&quot;&gt;&lt;span&gt;REYWIDGETS STUDIO&lt;/span&gt;&lt;span&gt;↗&lt;/span&gt;&lt;/div&gt;
+&lt;/main&gt;
+&lt;script&gt;document.addEventListener(&#x27;DOMContentLoaded&#x27;,()=&gt;{
+// Edit freely. No internet access is needed for this design.
+
+});&lt;/script&gt;
+&lt;/body&gt;&lt;/html&gt;"></iframe></article><article><div class="label">Made Of Possibility · large</div><iframe id="f2" title="made-of-possibility large" width="364" height="382" srcdoc="&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width,initial-scale=1,maximum-scale=1&quot;&gt;
+&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27;; style-src &#x27;unsafe-inline&#x27;; img-src data: blob:; font-src data:; connect-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
+&lt;style&gt;html,body{width:100%;height:100%;margin:0;overflow:hidden;box-sizing:border-box}*{box-sizing:inherit}&lt;/style&gt;
+&lt;style&gt;body{background:#deebcf;color:#1d3023;font-family:system-ui}
+main{height:100%;padding:20px 24px;display:flex;flex-direction:column;position:relative}
+.top,.bottom{display:flex;align-items:center;gap:7px;font:9px ui-monospace,monospace;letter-spacing:1px}
+.dot{width:6px;height:6px;background:#3a7039;border-radius:100%}.star{margin-left:auto;font-size:26px}
+h1{font-size:38px;line-height:.94;letter-spacing:-1.8px;margin:10px 0 8px;font-weight:650}
+h1 br{display:none}em{font-family:Georgia,serif;font-weight:400}
+p{font-size:11px;margin:0;max-width:220px}.bottom{margin-top:auto;font-size:7px;justify-content:space-between;opacity:.65}
+@media(max-width:220px){main{padding:14px}.top{font-size:7px;letter-spacing:0}.star{font-size:20px}h1{font-size:29px}h1 br{display:block}p{font-size:9px}.bottom{font-size:6px}}
+@media(min-height:250px){h1{font-size:68px;margin:30px 0 20px}h1 br{display:block}p{font-size:16px}.top{font-size:11px}}&lt;/style&gt;
+&lt;script&gt;
+window.__rwError = null;
+window.addEventListener(&#x27;error&#x27;,e=&gt;{window.__rwError=e.message;});
+window.addEventListener(&#x27;unhandledrejection&#x27;,e=&gt;{window.__rwError=String(e.reason);});
+window.widget = {
+  data: JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(&#x27;eyJtZXNzYWdlIjogIk1ha2Ugc29tZXRoaW5nIHlvdXJzLiJ9&#x27;),c=&gt;c.charCodeAt(0)))),
+  size: &#x27;large&#x27;, width: 364, height: 382,
+  ready: Promise.resolve(),
+  get(pointer, fallback=&#x27;—&#x27;) {
+    if (pointer === &#x27;&#x27;) return this.data;
+    if (!pointer.startsWith(&#x27;/&#x27;)) return fallback;
+    let node = this.data;
+    for (const key of pointer.slice(1).split(&#x27;/&#x27;).map(k=&gt;k.replace(/~1/g,&#x27;/&#x27;).replace(/~0/g,&#x27;~&#x27;))) {
+      if (node == null || !Object.prototype.hasOwnProperty.call(Object(node),key)) return fallback;
+      node = node[key];
+    }
+    return node == null ? fallback : node;
+  }
+};
+document.addEventListener(&#x27;DOMContentLoaded&#x27;,()=&gt;{
+  for (const el of document.querySelectorAll(&#x27;[data-bind]&#x27;)) {
+    el.textContent = String(widget.get(el.getAttribute(&#x27;data-bind&#x27;)));
+  }
+});
+&lt;/script&gt;&lt;/head&gt;&lt;body&gt;&lt;main&gt;
+  &lt;div class=&quot;top&quot;&gt;&lt;span class=&quot;dot&quot;&gt;&lt;/span&gt; A LITTLE REMINDER &lt;span class=&quot;star&quot;&gt;✳&lt;/span&gt;&lt;/div&gt;
+  &lt;h1&gt;Make it&lt;br&gt; &lt;em&gt;yours.&lt;/em&gt;&lt;/h1&gt;
+  &lt;p data-bind=&quot;/message&quot;&gt;&lt;/p&gt;
+  &lt;div class=&quot;bottom&quot;&gt;&lt;span&gt;REYWIDGETS STUDIO&lt;/span&gt;&lt;span&gt;↗&lt;/span&gt;&lt;/div&gt;
+&lt;/main&gt;
+&lt;script&gt;document.addEventListener(&#x27;DOMContentLoaded&#x27;,()=&gt;{
+// Edit freely. No internet access is needed for this design.
+
+});&lt;/script&gt;
+&lt;/body&gt;&lt;/html&gt;"></iframe></article><article><div class="label">Api Canvas · small</div><iframe id="f3" title="api-canvas small" width="170" height="170" srcdoc="&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width,initial-scale=1,maximum-scale=1&quot;&gt;
+&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27;; style-src &#x27;unsafe-inline&#x27;; img-src data: blob:; font-src data:; connect-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
+&lt;style&gt;html,body{width:100%;height:100%;margin:0;overflow:hidden;box-sizing:border-box}*{box-sizing:inherit}&lt;/style&gt;
+&lt;style&gt;body{font-family:system-ui;background:#191e2b;color:#c6d8f4}
+main{height:100%;padding:20px;display:flex;flex-direction:column;justify-content:space-between}
+header,footer{font:9px ui-monospace,monospace;letter-spacing:1px}
+.reading{display:flex;align-items:baseline;gap:8px;color:#afff8b}strong{font-size:66px;font-weight:500;letter-spacing:-4px}
+footer{font-size:8px;opacity:.7}@media(min-height:250px){strong{font-size:128px}}&lt;/style&gt;
+&lt;script&gt;
+window.__rwError = null;
+window.addEventListener(&#x27;error&#x27;,e=&gt;{window.__rwError=e.message;});
+window.addEventListener(&#x27;unhandledrejection&#x27;,e=&gt;{window.__rwError=String(e.reason);});
+window.widget = {
+  data: JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(&#x27;eyJjdXJyZW50IjogeyJ0ZW1wZXJhdHVyZV8ybSI6IDI5LCAiYXBwYXJlbnRfdGVtcGVyYXR1cmUiOiAzMywgIndpbmRfc3BlZWRfMTBtIjogMTJ9fQ==&#x27;),c=&gt;c.charCodeAt(0)))),
+  size: &#x27;small&#x27;, width: 170, height: 170,
+  ready: Promise.resolve(),
+  get(pointer, fallback=&#x27;—&#x27;) {
+    if (pointer === &#x27;&#x27;) return this.data;
+    if (!pointer.startsWith(&#x27;/&#x27;)) return fallback;
+    let node = this.data;
+    for (const key of pointer.slice(1).split(&#x27;/&#x27;).map(k=&gt;k.replace(/~1/g,&#x27;/&#x27;).replace(/~0/g,&#x27;~&#x27;))) {
+      if (node == null || !Object.prototype.hasOwnProperty.call(Object(node),key)) return fallback;
+      node = node[key];
+    }
+    return node == null ? fallback : node;
+  }
+};
+document.addEventListener(&#x27;DOMContentLoaded&#x27;,()=&gt;{
+  for (const el of document.querySelectorAll(&#x27;[data-bind]&#x27;)) {
+    el.textContent = String(widget.get(el.getAttribute(&#x27;data-bind&#x27;)));
+  }
+});
+&lt;/script&gt;&lt;/head&gt;&lt;body&gt;&lt;main&gt;&lt;header&gt;MANILA / WEATHER&lt;/header&gt;&lt;div class=&quot;reading&quot;&gt;&lt;strong id=&quot;temp&quot;&gt;&lt;/strong&gt;&lt;span&gt;°C&lt;/span&gt;&lt;/div&gt;&lt;footer&gt;FEELS LIKE &lt;b data-bind=&quot;/current/apparent_temperature&quot;&gt;&lt;/b&gt;° · OPEN-METEO&lt;/footer&gt;&lt;/main&gt;
+&lt;script&gt;document.addEventListener(&#x27;DOMContentLoaded&#x27;,()=&gt;{
+document.getElementById(&#x27;temp&#x27;).textContent = widget.get(&#x27;/current/temperature_2m&#x27;);
+});&lt;/script&gt;
+&lt;/body&gt;&lt;/html&gt;"></iframe></article><article><div class="label">Api Canvas · medium</div><iframe id="f4" title="api-canvas medium" width="364" height="170" srcdoc="&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width,initial-scale=1,maximum-scale=1&quot;&gt;
+&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27;; style-src &#x27;unsafe-inline&#x27;; img-src data: blob:; font-src data:; connect-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
+&lt;style&gt;html,body{width:100%;height:100%;margin:0;overflow:hidden;box-sizing:border-box}*{box-sizing:inherit}&lt;/style&gt;
+&lt;style&gt;body{font-family:system-ui;background:#191e2b;color:#c6d8f4}
+main{height:100%;padding:20px;display:flex;flex-direction:column;justify-content:space-between}
+header,footer{font:9px ui-monospace,monospace;letter-spacing:1px}
+.reading{display:flex;align-items:baseline;gap:8px;color:#afff8b}strong{font-size:66px;font-weight:500;letter-spacing:-4px}
+footer{font-size:8px;opacity:.7}@media(min-height:250px){strong{font-size:128px}}&lt;/style&gt;
+&lt;script&gt;
+window.__rwError = null;
+window.addEventListener(&#x27;error&#x27;,e=&gt;{window.__rwError=e.message;});
+window.addEventListener(&#x27;unhandledrejection&#x27;,e=&gt;{window.__rwError=String(e.reason);});
+window.widget = {
+  data: JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(&#x27;eyJjdXJyZW50IjogeyJ0ZW1wZXJhdHVyZV8ybSI6IDI5LCAiYXBwYXJlbnRfdGVtcGVyYXR1cmUiOiAzMywgIndpbmRfc3BlZWRfMTBtIjogMTJ9fQ==&#x27;),c=&gt;c.charCodeAt(0)))),
+  size: &#x27;medium&#x27;, width: 364, height: 170,
+  ready: Promise.resolve(),
+  get(pointer, fallback=&#x27;—&#x27;) {
+    if (pointer === &#x27;&#x27;) return this.data;
+    if (!pointer.startsWith(&#x27;/&#x27;)) return fallback;
+    let node = this.data;
+    for (const key of pointer.slice(1).split(&#x27;/&#x27;).map(k=&gt;k.replace(/~1/g,&#x27;/&#x27;).replace(/~0/g,&#x27;~&#x27;))) {
+      if (node == null || !Object.prototype.hasOwnProperty.call(Object(node),key)) return fallback;
+      node = node[key];
+    }
+    return node == null ? fallback : node;
+  }
+};
+document.addEventListener(&#x27;DOMContentLoaded&#x27;,()=&gt;{
+  for (const el of document.querySelectorAll(&#x27;[data-bind]&#x27;)) {
+    el.textContent = String(widget.get(el.getAttribute(&#x27;data-bind&#x27;)));
+  }
+});
+&lt;/script&gt;&lt;/head&gt;&lt;body&gt;&lt;main&gt;&lt;header&gt;MANILA / WEATHER&lt;/header&gt;&lt;div class=&quot;reading&quot;&gt;&lt;strong id=&quot;temp&quot;&gt;&lt;/strong&gt;&lt;span&gt;°C&lt;/span&gt;&lt;/div&gt;&lt;footer&gt;FEELS LIKE &lt;b data-bind=&quot;/current/apparent_temperature&quot;&gt;&lt;/b&gt;° · OPEN-METEO&lt;/footer&gt;&lt;/main&gt;
+&lt;script&gt;document.addEventListener(&#x27;DOMContentLoaded&#x27;,()=&gt;{
+document.getElementById(&#x27;temp&#x27;).textContent = widget.get(&#x27;/current/temperature_2m&#x27;);
+});&lt;/script&gt;
+&lt;/body&gt;&lt;/html&gt;"></iframe></article><article><div class="label">Api Canvas · large</div><iframe id="f5" title="api-canvas large" width="364" height="382" srcdoc="&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width,initial-scale=1,maximum-scale=1&quot;&gt;
+&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27;; style-src &#x27;unsafe-inline&#x27;; img-src data: blob:; font-src data:; connect-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
+&lt;style&gt;html,body{width:100%;height:100%;margin:0;overflow:hidden;box-sizing:border-box}*{box-sizing:inherit}&lt;/style&gt;
+&lt;style&gt;body{font-family:system-ui;background:#191e2b;color:#c6d8f4}
+main{height:100%;padding:20px;display:flex;flex-direction:column;justify-content:space-between}
+header,footer{font:9px ui-monospace,monospace;letter-spacing:1px}
+.reading{display:flex;align-items:baseline;gap:8px;color:#afff8b}strong{font-size:66px;font-weight:500;letter-spacing:-4px}
+footer{font-size:8px;opacity:.7}@media(min-height:250px){strong{font-size:128px}}&lt;/style&gt;
+&lt;script&gt;
+window.__rwError = null;
+window.addEventListener(&#x27;error&#x27;,e=&gt;{window.__rwError=e.message;});
+window.addEventListener(&#x27;unhandledrejection&#x27;,e=&gt;{window.__rwError=String(e.reason);});
+window.widget = {
+  data: JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(&#x27;eyJjdXJyZW50IjogeyJ0ZW1wZXJhdHVyZV8ybSI6IDI5LCAiYXBwYXJlbnRfdGVtcGVyYXR1cmUiOiAzMywgIndpbmRfc3BlZWRfMTBtIjogMTJ9fQ==&#x27;),c=&gt;c.charCodeAt(0)))),
+  size: &#x27;large&#x27;, width: 364, height: 382,
+  ready: Promise.resolve(),
+  get(pointer, fallback=&#x27;—&#x27;) {
+    if (pointer === &#x27;&#x27;) return this.data;
+    if (!pointer.startsWith(&#x27;/&#x27;)) return fallback;
+    let node = this.data;
+    for (const key of pointer.slice(1).split(&#x27;/&#x27;).map(k=&gt;k.replace(/~1/g,&#x27;/&#x27;).replace(/~0/g,&#x27;~&#x27;))) {
+      if (node == null || !Object.prototype.hasOwnProperty.call(Object(node),key)) return fallback;
+      node = node[key];
+    }
+    return node == null ? fallback : node;
+  }
+};
+document.addEventListener(&#x27;DOMContentLoaded&#x27;,()=&gt;{
+  for (const el of document.querySelectorAll(&#x27;[data-bind]&#x27;)) {
+    el.textContent = String(widget.get(el.getAttribute(&#x27;data-bind&#x27;)));
+  }
+});
+&lt;/script&gt;&lt;/head&gt;&lt;body&gt;&lt;main&gt;&lt;header&gt;MANILA / WEATHER&lt;/header&gt;&lt;div class=&quot;reading&quot;&gt;&lt;strong id=&quot;temp&quot;&gt;&lt;/strong&gt;&lt;span&gt;°C&lt;/span&gt;&lt;/div&gt;&lt;footer&gt;FEELS LIKE &lt;b data-bind=&quot;/current/apparent_temperature&quot;&gt;&lt;/b&gt;° · OPEN-METEO&lt;/footer&gt;&lt;/main&gt;
+&lt;script&gt;document.addEventListener(&#x27;DOMContentLoaded&#x27;,()=&gt;{
+document.getElementById(&#x27;temp&#x27;).textContent = widget.get(&#x27;/current/temperature_2m&#x27;);
+});&lt;/script&gt;
+&lt;/body&gt;&lt;/html&gt;"></iframe></article></div><pre id="results">Checking templates…</pre><script>
+window.addEventListener('load', async () => {
+ const results=[];
+ const assert=(test,message)=>{if(!test)throw Error(message)};
+ try {
+  const frames=Array.from(document.querySelectorAll('iframe'));
+  for (let i=0;i<frames.length;i++) {
+   const frame=frames[i],w=frame.contentWindow,d=frame.contentDocument;
+   await d.fonts.ready; await w.widget.ready;
+   assert(!w.__rwError,'JavaScript error '+w.__rwError);
+   assert(w.widget.width===Number(frame.width),'Wrong runtime width');
+   assert(w.widget.height===Number(frame.height),'Wrong runtime height');
+   assert(d.documentElement.scrollWidth===Number(frame.width),'Horizontal overflow');
+   assert(d.documentElement.scrollHeight===Number(frame.height),'Vertical overflow');
+   assert(w.widget.get('/missing','fallback')==='fallback','Missing fallback');
+   if(i<3) assert(d.querySelector('[data-bind]').textContent==='Make something yours.','Text binding');
+   else {assert(d.querySelector('#temp').textContent==='29','JavaScript temperature');assert(d.querySelector('[data-bind]').textContent==='33','API text binding');}
+   let blocked=false;try{await w.fetch('https://example.invalid/blocked-by-csp');}catch{blocked=true;}
+   assert(blocked,'External fetch not blocked');
+   const original=w.widget.data;w.widget.data={'a/b':{'~x':['日本',null]}};
+   assert(w.widget.get('/a~1b/~0x/0')==='日本','Escaped pointer or Unicode');
+   assert(w.widget.get('/a~1b/~0x/1','empty')==='empty','Null fallback');w.widget.data=original;
+   results.push('PASS '+frame.title+' — bindings, script execution, size, bounds, CSP, Unicode');
+  }
+  document.querySelector('#results').textContent=results.join('\n')+'\n6 / 6 passed. Native XCTest and iOS WebKit checks still require Xcode.';
+ } catch(error) { document.querySelector('#results').textContent=results.join('\n')+'\nFAIL: '+error.message; }
+});
+</script></body></html>

@@ -1,0 +1,5 @@
+body{font-family:system-ui;background:#191e2b;color:#c6d8f4}
+main{height:100%;padding:20px;display:flex;flex-direction:column;justify-content:space-between}
+header,footer{font:9px ui-monospace,monospace;letter-spacing:1px}
+.reading{display:flex;align-items:baseline;gap:8px;color:#afff8b}strong{font-size:66px;font-weight:500;letter-spacing:-4px}
+footer{font-size:8px;opacity:.7}@media(min-height:250px){strong{font-size:128px}}
