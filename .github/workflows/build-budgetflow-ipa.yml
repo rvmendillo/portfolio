@@ -27,6 +27,13 @@ jobs:
           unzip -q /tmp/BudgetFlow-native-ios-branded.zip -d /tmp/budgetflow-src
           test -f /tmp/budgetflow-src/BudgetFlow/BudgetFlow.xcodeproj/project.pbxproj
 
+      - name: Verify ledger and cash-flow engine
+        shell: bash
+        run: |
+          cd /tmp/budgetflow-src/BudgetFlow
+          swiftc BudgetFlow/Models.swift BudgetFlow/CSVImportService.swift BudgetFlow/AnalyticsEngine.swift BudgetFlow/ForecastEngine.swift Tests/main.swift -o /tmp/budgetflow-engine-tests
+          /tmp/budgetflow-engine-tests | tee "$GITHUB_WORKSPACE/engine-tests.log"
+
       - name: Build unsigned iPhone app
         shell: bash
         run: |
@@ -44,12 +51,36 @@ jobs:
           mkdir -p /tmp/ipa/Payload
           cp -R "$APP" /tmp/ipa/Payload/
           cd /tmp/ipa
-          /usr/bin/zip -qry "$GITHUB_WORKSPACE/BudgetFlow-branded-import-fix.ipa" Payload
+          /usr/bin/zip -qry "$GITHUB_WORKSPACE/BudgetFlow-Nexus-local-import.ipa" Payload
+
+      - name: Capture iPhone previews
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -e
+          cd /tmp/budgetflow-src/BudgetFlow
+          xcodebuild -project BudgetFlow.xcodeproj -scheme BudgetFlow -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/BudgetFlowSim CODE_SIGNING_ALLOWED=NO build > "$GITHUB_WORKSPACE/simulator.log" 2>&1
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(v["udid"] for arr in d["devices"].values() for v in arr if v["name"].startswith("iPhone")))')
+          xcrun simctl boot "$DEVICE" || true
+          xcrun simctl bootstatus "$DEVICE" -b
+          xcrun simctl install "$DEVICE" /tmp/BudgetFlowSim/Build/Products/Debug-iphonesimulator/BudgetFlow.app
+          xcrun simctl launch "$DEVICE" com.example.BudgetFlow
+          sleep 4
+          xcrun simctl io "$DEVICE" screenshot "$GITHUB_WORKSPACE/BudgetFlow-Home.png"
+          xcrun simctl terminate "$DEVICE" com.example.BudgetFlow
+          xcrun simctl launch "$DEVICE" com.example.BudgetFlow --nexus-preview
+          sleep 4
+          xcrun simctl io "$DEVICE" screenshot "$GITHUB_WORKSPACE/BudgetFlow-Nexus.png"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: BudgetFlow-branded-import-fix-IPA
-          path: BudgetFlow-branded-import-fix.ipa
+          name: BudgetFlow-Nexus-local-import-IPA
+          path: |
+            BudgetFlow-Nexus-local-import.ipa
+            engine-tests.log
+            build.log
+            simulator.log
+            BudgetFlow-*.png
           if-no-files-found: error
           retention-days: 14
 
@@ -59,7 +90,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release view budgetflow-build >/dev/null 2>&1 || gh release create budgetflow-build --title "BudgetFlow iOS Build" --notes "BudgetFlow iOS builds."
-          gh release upload budgetflow-build BudgetFlow-branded-import-fix.ipa build.log --clobber
+          gh release upload budgetflow-build BudgetFlow-Nexus-local-import.ipa build.log --clobber
 
       - name: Publish failure log
         if: failure()
